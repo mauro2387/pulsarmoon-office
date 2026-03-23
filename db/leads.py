@@ -38,7 +38,7 @@ def get_lead(lead_id: int) -> dict | None:
 
 def update_lead_status(lead_id: int, status: str) -> bool:
     """Actualiza el estado de un lead. Estados: new, contacted, qualified, converted, lost."""
-    valid = {"new", "contacted", "qualified", "converted", "lost"}
+    valid = {"new", "contacted", "qualified", "converted", "lost", "cold"}
     if status not in valid:
         logger.warning("Estado inválido para lead: %s", status)
         return False

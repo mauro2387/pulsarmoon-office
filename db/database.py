@@ -157,6 +157,29 @@ class Database:
             """)
         logger.info("Tablas base creadas/verificadas.")
 
+    def setup_followup_tables(self):
+        """Crea tabla de cola de follow-ups y columna en leads."""
+        with self._cursor() as cur:
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS followup_queue (
+                    id SERIAL PRIMARY KEY,
+                    lead_id INTEGER REFERENCES leads(id),
+                    phone TEXT NOT NULL,
+                    business_name TEXT NOT NULL,
+                    message TEXT NOT NULL,
+                    followup_number INTEGER DEFAULT 1,
+                    status TEXT DEFAULT 'pending_approval',
+                    created_at TIMESTAMP DEFAULT NOW(),
+                    sent_at TIMESTAMP
+                )
+            """)
+            # Agregar followup_count a leads si no existe
+            cur.execute("""
+                ALTER TABLE leads
+                ADD COLUMN IF NOT EXISTS followup_count INTEGER DEFAULT 0
+            """)
+        logger.info("Tabla followup_queue creada/verificada.")
+
     def setup_budget_tables(self):
         """Crea tabla de presupuestos."""
         with self._cursor() as cur:
