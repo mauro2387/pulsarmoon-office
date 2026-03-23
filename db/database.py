@@ -119,6 +119,34 @@ class Database:
                 )
             """)
             cur.execute("""
+                CREATE TABLE IF NOT EXISTS content (
+                    id SERIAL PRIMARY KEY,
+                    topic TEXT NOT NULL,
+                    blog TEXT NOT NULL,
+                    caption_ig TEXT NOT NULL,
+                    caption_fb TEXT NOT NULL,
+                    image_url TEXT,
+                    status TEXT NOT NULL DEFAULT 'pending',
+                    created_at TIMESTAMP DEFAULT NOW(),
+                    reviewed_at TIMESTAMP
+                )
+            """)
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS leads (
+                    id SERIAL PRIMARY KEY,
+                    business_name TEXT NOT NULL,
+                    phone TEXT,
+                    sector TEXT,
+                    city TEXT,
+                    source TEXT DEFAULT '',
+                    notes TEXT DEFAULT '',
+                    score INTEGER DEFAULT 0,
+                    status TEXT NOT NULL DEFAULT 'new',
+                    created_at TIMESTAMP DEFAULT NOW(),
+                    updated_at TIMESTAMP DEFAULT NOW()
+                )
+            """)
+            cur.execute("""
                 INSERT INTO companies (id, name, whatsapp, context_path)
                 VALUES
                     ('pulsarmoon', 'PulsarMoon', '59891722750',

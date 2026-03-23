@@ -4,9 +4,18 @@ Guarda blog posts, captions de Instagram y Facebook con estado de aprobación.
 """
 import sqlite3
 import json
+import logging
+import sys
 import time
 from pathlib import Path
 from typing import Optional
+
+# Path para imports de db/
+_PROJECT_ROOT = str(Path(__file__).resolve().parent.parent.parent)
+if _PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, _PROJECT_ROOT)
+
+logger = logging.getLogger(__name__)
 
 DB_PATH = Path(__file__).parent / "marketing.db"
 
@@ -56,7 +65,7 @@ def init_db() -> None:
 def save_content(trend_keyword: str, trend_score: float,
                  blog_post: str, caption_ig: str, caption_fb: str,
                  image_url: str = "") -> int:
-    """Guarda contenido generado. Retorna el ID."""
+    """Guarda contenido generado en SQLite + PostgreSQL."""
     conn = get_conn()
     cur = conn.execute(
         """INSERT INTO content
@@ -67,6 +76,14 @@ def save_content(trend_keyword: str, trend_score: float,
     content_id = cur.lastrowid
     conn.commit()
     conn.close()
+    # Guardar también en PostgreSQL
+    try:
+        from db.content import save_content as pg_save
+        pg_save(topic=trend_keyword, blog=blog_post,
+                caption_ig=caption_ig, caption_fb=caption_fb,
+                image_url=image_url)
+    except Exception as e:
+        logger.warning("Error guardando en PostgreSQL: %s", e)
     return content_id
 
 

@@ -8,15 +8,26 @@ logger = logging.getLogger(__name__)
 
 
 def create_lead(business_name: str, phone: str, sector: str,
-                city: str, source: str = "", notes: str = "") -> dict | None:
+                city: str, source: str = "", notes: str = "",
+                score: int = 0) -> dict | None:
     """Crea un lead nuevo. Retorna el registro creado."""
     db = get_db()
     return db.fetchone(
-        """INSERT INTO leads (business_name, phone, sector, city, source, notes)
-           VALUES (%s, %s, %s, %s, %s, %s)
+        """INSERT INTO leads (business_name, phone, sector, city, source, notes, score)
+           VALUES (%s, %s, %s, %s, %s, %s, %s)
            RETURNING *""",
-        (business_name, phone, sector, city, source, notes)
+        (business_name, phone, sector, city, source, notes, score)
     )
+
+
+def lead_exists(business_name: str, city: str) -> bool:
+    """Verifica si un lead ya existe por nombre + ciudad."""
+    db = get_db()
+    row = db.fetchone(
+        "SELECT id FROM leads WHERE business_name = %s AND city = %s",
+        (business_name, city)
+    )
+    return row is not None
 
 
 def get_lead(lead_id: int) -> dict | None:

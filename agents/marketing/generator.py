@@ -4,6 +4,7 @@ Produce blog post SEO, caption Instagram y caption Facebook.
 """
 import logging
 import os
+import sys
 import base64
 from pathlib import Path
 from dotenv import load_dotenv
@@ -12,6 +13,11 @@ from openai import OpenAI
 
 load_dotenv()
 logger = logging.getLogger(__name__)
+
+# Path para imports de db/
+_PROJECT_ROOT = str(Path(__file__).resolve().parent.parent.parent)
+if _PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, _PROJECT_ROOT)
 
 MODEL = "claude-sonnet-4-20250514"
 MAX_TOKENS = 4096
@@ -37,6 +43,18 @@ def load_context() -> str:
 
 # Cargar contexto una vez al importar
 BRAND_CONTEXT = load_context()
+
+
+def get_recent_topics(limit: int = 5) -> list[str]:
+    """Obtiene temas recientes de PostgreSQL para evitar repetir contenido."""
+    try:
+        from db.database import get_db
+        rows = get_db().fetchall(
+            "SELECT topic, created_at FROM content "
+            "ORDER BY created_at DESC LIMIT %s", (limit,))
+        return [f"{r['topic']} ({r['created_at'].strftime('%d/%m')})" for r in rows]
+    except Exception:
+        return []
 
 
 def _get_client() -> Anthropic:
@@ -86,7 +104,7 @@ def generate_image(topic: str) -> str | None:
         return None
 
 
-def generate_blog_post(keyword: str, trends: list[dict]) -> str:
+def generate_blog_post(keyword: str, trends: list[dict], history: str = "") -> str:
     """Genera blog post SEO de ~800 palabras sobre el keyword trending."""
     logger.info("Generando blog post sobre: %s", keyword)
 
@@ -101,7 +119,7 @@ Tema principal: {keyword}
 Tendencias actuales en Uruguay:
 {trends_text}
 
-REQUISITOS:
+{history}REQUISITOS:
 - ~800 palabras
 - Título H1 atractivo con la keyword principal
 - 2-3 subtítulos H2
@@ -123,7 +141,7 @@ Devolvé SOLO el blog post en Markdown, sin explicaciones adicionales."""
     return response.content[0].text
 
 
-def generate_caption_ig(keyword: str, blog_summary: str) -> str:
+def generate_caption_ig(keyword: str, blog_summary: str, history: str = "") -> str:
     """Genera caption de Instagram (máx 2200 chars, emojis, 5 hashtags)."""
     logger.info("Generando caption Instagram sobre: %s", keyword)
 
@@ -133,7 +151,7 @@ def generate_caption_ig(keyword: str, blog_summary: str) -> str:
 Tema: {keyword}
 Resumen del blog: {blog_summary[:500]}
 
-REQUISITOS:
+{history}REQUISITOS:
 - Máximo 2200 caracteres
 - Emojis relevantes pero sin abusar (3-5 emojis)
 - Gancho en la primera línea (la gente ve solo las primeras palabras)
@@ -153,7 +171,7 @@ Devolvé SOLO el caption, sin explicaciones."""
     return response.content[0].text
 
 
-def generate_caption_fb(keyword: str, blog_summary: str) -> str:
+def generate_caption_fb(keyword: str, blog_summary: str, history: str = "") -> str:
     """Genera caption de Facebook (más largo e informativo)."""
     logger.info("Generando caption Facebook sobre: %s", keyword)
 
@@ -163,7 +181,7 @@ def generate_caption_fb(keyword: str, blog_summary: str) -> str:
 Tema: {keyword}
 Resumen del blog: {blog_summary[:500]}
 
-REQUISITOS:
+{history}REQUISITOS:
 - Más largo que Instagram, informativo y profesional
 - Sin límite estricto de caracteres pero no más de 3000
 - Puede tener formato con saltos de línea
@@ -194,11 +212,22 @@ def generate_all(trends: list[dict]) -> dict:
     top = trends[0]
     keyword = top["keyword"]
 
-    blog = generate_blog_post(keyword, trends)
+    # Memoria: evitar temas repetidos
+    recent = get_recent_topics()
+    history = ""
+    if recent:
+        topics_list = "\n".join(f"- {t}" for t in recent)
+        history = (
+            "IMPORTANTE — Temas de posts anteriores (NO repetir ni temas similares):\n"
+            f"{topics_list}\n"
+            "El nuevo post debe ser sobre un tema DIFERENTE y FRESCO.\n\n"
+        )
+
+    blog = generate_blog_post(keyword, trends, history)
     # Usar primeros 500 chars del blog como resumen para captions
     blog_summary = blog[:500]
-    ig = generate_caption_ig(keyword, blog_summary)
-    fb = generate_caption_fb(keyword, blog_summary)
+    ig = generate_caption_ig(keyword, blog_summary, history)
+    fb = generate_caption_fb(keyword, blog_summary, history)
 
     # Generar imagen (no bloqueante si falla)
     image_url = generate_image(keyword)
