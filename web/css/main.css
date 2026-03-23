@@ -1,0 +1,180 @@
+/* Variables de tema */
+:root {
+  --color-bg:        #0a0a0f;
+  --color-hud-bg:    rgba(10, 10, 15, 0.85);
+  --color-hud-border:#2a2a3a;
+  --color-text:      #e0e0f0;
+  --color-text-dim:  #7070a0;
+  --color-accent:    #7F77DD;
+  --color-online:    #4caf50;
+  --color-offline:   #f44336;
+
+  --font-pixel: 'Courier New', Courier, monospace;
+  --hud-radius: 4px;
+  --hud-pad:    8px;
+}
+
+/* Reset completo */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;        /* sin scrollbars */
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-pixel);
+  font-size: 12px;
+}
+
+/* Canvas pixel-perfect fullscreen */
+#office {
+  display: block;
+  width: 100vw;
+  height: 100vh;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  cursor: grab;
+}
+
+#office:active {
+  cursor: grabbing;
+}
+
+/* HUD contenedor base — posicionamiento absoluto sobre canvas */
+#hud {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;   /* el canvas recibe eventos por defecto */
+}
+
+/* Clase base para widgets HUD */
+.hud-panel {
+  position: absolute;
+  background: var(--color-hud-bg);
+  border: 1px solid var(--color-hud-border);
+  border-radius: var(--hud-radius);
+  padding: var(--hud-pad);
+  pointer-events: auto;
+  backdrop-filter: blur(4px);
+}
+
+/* Indicador de estado de conexion (legacy — ahora en status bar) */
+#ws-status {
+  display: none;
+}
+
+/* Panel de detalle (slide-in desde la derecha) */
+#detail-panel {
+  position: absolute;
+  top: 36px;
+  right: -290px;
+  width: 260px;
+  background: var(--color-hud-bg);
+  border: 1px solid var(--color-hud-border);
+  border-radius: var(--hud-radius);
+  padding: 12px;
+  pointer-events: auto;
+  backdrop-filter: blur(4px);
+  transition: right 200ms ease;
+  font-size: 11px;
+  max-height: calc(100vh - 60px);
+  overflow-y: auto;
+}
+
+#detail-panel.open {
+  right: 10px;
+}
+
+.dp-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.dp-av {
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+.dp-name {
+  font-weight: bold;
+  font-size: 13px;
+  flex: 1;
+  color: var(--color-text);
+}
+
+.dp-x {
+  background: none;
+  border: 1px solid var(--color-hud-border);
+  color: var(--color-text-dim);
+  cursor: pointer;
+  width: 22px;
+  height: 22px;
+  border-radius: 3px;
+  font-size: 14px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.dp-x:hover {
+  background: rgba(255,255,255,0.08);
+  color: var(--color-text);
+}
+
+.dp-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--color-text);
+  text-transform: capitalize;
+  margin-bottom: 4px;
+}
+
+.dp-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.dp-hr {
+  border: none;
+  border-top: 1px solid var(--color-hud-border);
+  margin: 8px 0;
+}
+
+.dp-row {
+  color: var(--color-text);
+  margin-bottom: 4px;
+}
+
+.dp-lbl {
+  color: var(--color-text-dim);
+}
+
+.dp-task-lbl {
+  color: var(--color-text-dim);
+  margin-bottom: 4px;
+}
+
+.dp-task {
+  color: var(--color-accent);
+  font-style: italic;
+  word-break: break-word;
+}
+
+.dp-time {
+  color: var(--color-text-dim);
+  font-size: 10px;
+}

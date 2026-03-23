@@ -1,0 +1,12 @@
+office.db
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+logs/*.log
+agents/events/*.json
+.env
+__pycache__/
+*.pyc
+node_modules/
+.vercel/
