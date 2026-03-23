@@ -25,6 +25,13 @@ SECTORS = [
     "consultorio", "gym", "salon de belleza", "farmacia", "boutique",
 ]
 
+# Fallback queries si inteligencia no disponible
+_FALLBACK_QUERIES = [
+    "restaurant Punta del Este", "hotel Maldonado",
+    "clinica Punta del Este", "gimnasio Punta del Este",
+    "inmobiliaria Maldonado",
+]
+
 
 class ProspectorAgent(BaseAgent):
     """Busca negocios sin web y los convierte en leads calificados."""
@@ -173,20 +180,35 @@ class ProspectorAgent(BaseAgent):
 
     # ── Pipeline diario ──
 
+    def _get_search_queries(self) -> list[str]:
+        """Obtiene queries del agente de inteligencia o usa fallback."""
+        try:
+            from agents.inteligencia.intelligence_agent import get_current_insights
+            insights = get_current_insights()
+            queries = insights.get("prospector_queries", [])
+            if queries:
+                logger.info("Usando %d queries de inteligencia", len(queries))
+                return queries
+        except Exception as e:
+            logger.warning("Inteligencia no disponible: %s", e)
+        return _FALLBACK_QUERIES
+
     def run_daily(self) -> dict:
-        """Pipeline completo: busca leads en todos los sectores."""
+        """Pipeline completo: busca leads con queries dinámicos."""
         self.write_event("working", "Buscando leads en Punta del Este...")
         total = 0
         all_leads = []
+        queries = self._get_search_queries()
 
-        for sector in SECTORS:
+        for query in queries:
             try:
-                leads = self.search_leads(
-                    city="Punta del Este", sector=sector, limit=20)
+                # Extraer ciudad y sector del query
+                parts = query.rsplit(" ", 2)
+                city = " ".join(parts[-2:]) if len(parts) >= 2 else "Punta del Este"
+                sector = parts[0] if len(parts) >= 2 else query
+                leads = self.search_leads(city=city, sector=sector, limit=20)
                 for lead in leads:
                     msg = self.generate_message(lead)
-                    # Guardar mensaje en notes del lead
-                    from db.leads import get_lead
                     from db.database import get_db
                     get_db().execute(
                         "UPDATE leads SET notes = %s WHERE id = %s",
@@ -199,7 +221,7 @@ class ProspectorAgent(BaseAgent):
                     total += 1
                 all_leads.extend(leads)
             except Exception as e:
-                logger.error("Error en sector %s: %s", sector, e)
+                logger.error("Error en query '%s': %s", query, e)
 
         self.write_event("done", f"{total} leads nuevos encontrados")
         return {"total": total, "leads": all_leads}

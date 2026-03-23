@@ -157,6 +157,38 @@ class Database:
             """)
         logger.info("Tablas base creadas/verificadas.")
 
+    def setup_intelligence_tables(self):
+        """Crea tablas para el agente de inteligencia de mercado."""
+        with self._cursor() as cur:
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS raw_intelligence (
+                    id SERIAL PRIMARY KEY,
+                    source TEXT NOT NULL,
+                    title TEXT NOT NULL,
+                    url TEXT,
+                    content TEXT,
+                    collected_at TIMESTAMP DEFAULT NOW(),
+                    week_number INTEGER,
+                    year INTEGER
+                )
+            """)
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS intelligence_insights (
+                    id SERIAL PRIMARY KEY,
+                    week_number INTEGER NOT NULL,
+                    year INTEGER NOT NULL,
+                    hot_sectors JSONB,
+                    prospector_queries JSONB,
+                    marketing_topic TEXT,
+                    marketing_keywords JSONB,
+                    opportunity_summary TEXT,
+                    raw_signals_count INTEGER,
+                    created_at TIMESTAMP DEFAULT NOW(),
+                    UNIQUE(week_number, year)
+                )
+            """)
+        logger.info("Tablas de inteligencia creadas/verificadas.")
+
 
 def get_db() -> Database:
     """Retorna instancia singleton de Database."""

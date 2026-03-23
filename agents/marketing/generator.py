@@ -212,6 +212,17 @@ def generate_all(trends: list[dict]) -> dict:
     top = trends[0]
     keyword = top["keyword"]
 
+    # Inteligencia: usar tema sugerido si disponible
+    try:
+        from agents.inteligencia.intelligence_agent import get_current_insights
+        insights = get_current_insights()
+        suggested = insights.get("marketing_topic", "")
+        if suggested:
+            logger.info("Inteligencia sugiere tema: %s", suggested)
+            keyword = suggested
+    except Exception as e:
+        logger.warning("Inteligencia no disponible: %s", e)
+
     # Memoria: evitar temas repetidos
     recent = get_recent_topics()
     history = ""
