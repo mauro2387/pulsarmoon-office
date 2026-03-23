@@ -3,7 +3,6 @@ Agente principal de marketing de PulsarMoon.
 Orquesta: tendencias → generación → guardado → evento para oficina visual.
 Ejecutable manual: python -m agents.marketing.marketing_agent
 """
-import json
 import logging
 import sys
 import time
@@ -14,67 +13,61 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
+from agents.base_agent import BaseAgent
 from agents.marketing.trends import fetch_trends
 from agents.marketing.generator import generate_all
 from agents.marketing.db import save_content, save_trends
 
 logger = logging.getLogger(__name__)
 
-EVENTS_DIR = PROJECT_ROOT / "agents" / "events"
-EVENT_FILE = EVENTS_DIR / "marketing-01.json"
+
+class MarketingAgent(BaseAgent):
+    """Agente de marketing que hereda de BaseAgent."""
+
+    def __init__(self):
+        super().__init__(
+            agent_id="marketing-01",
+            agent_name="Marketing AI",
+            department="marketing",
+            model="sonnet",
+            company_id="pulsarmoon",
+        )
 
 
-def _write_event(status: str, task: str) -> None:
-    """Escribe estado del agente para la oficina visual."""
-    event = {
-        "agent_id": "marketing-01",
-        "agent_name": "Marketing AI",
-        "department": "marketing",
-        "status": status,
-        "task": task,
-        "model": "sonnet-4.6",
-        "timestamp": int(time.time()),
-        "metadata": {}
-    }
-    EVENTS_DIR.mkdir(parents=True, exist_ok=True)
-    EVENT_FILE.write_text(
-        json.dumps(event, ensure_ascii=False, indent=2),
-        encoding="utf-8"
-    )
-    logger.info("Evento: [%s] %s", status, task)
+# Instancia global del agente
+_agent = MarketingAgent()
 
 
 def run_pipeline() -> dict:
     """
     Pipeline completo:
     1. Buscar tendencias en Uruguay
-    2. Generar contenido con Claude Sonnet 4.6
+    2. Generar contenido con Claude Sonnet
     3. Guardar en SQLite
     4. Actualizar estado en la oficina visual
-    Retorna dict con el contenido generado.
     """
-    _write_event("working", "Analizando tendencias en Uruguay...")
+    _agent.write_event("working", "Analizando tendencias en Uruguay...")
 
     # 1. Tendencias
     try:
         trends = fetch_trends()
         save_trends(trends)
-        logger.info("Tendencias obtenidas: %d", len(trends))
+        _agent.log("trends_fetched", {"count": len(trends)})
     except Exception as e:
-        _write_event("error", f"Error en tendencias: {e}")
+        _agent.write_event("error", f"Error en tendencias: {e}")
         raise
 
-    _write_event("working", f"Generando contenido sobre: {trends[0]['keyword']}")
+    _agent.write_event("working", f"Generando contenido sobre: {trends[0]['keyword']}")
 
     # 2. Generar contenido
     try:
         content = generate_all(trends)
-        logger.info("Contenido generado para: %s", content["keyword"])
+        _agent.log("content_generated", {"keyword": content["keyword"]})
     except Exception as e:
-        _write_event("error", f"Error generando contenido: {e}")
+        _agent.write_event("error", f"Error generando contenido: {e}")
         raise
 
-    _write_event("working", "Guardando en base de datos...")
+    _agent.write_event("working", "Guardando en base de datos...")
 
     # 3. Guardar en SQLite
     try:
@@ -86,16 +79,16 @@ def run_pipeline() -> dict:
             caption_fb=content["caption_fb"],
             image_url=content.get("image_url", ""),
         )
-        logger.info("Contenido guardado con ID: %d", content_id)
+        _agent.log("content_saved", {"id": content_id})
     except Exception as e:
-        _write_event("error", f"Error guardando: {e}")
+        _agent.write_event("error", f"Error guardando: {e}")
         raise
 
-    _write_event("done", f"Contenido #{content_id} listo para revisión")
+    _agent.write_event("done", f"Contenido #{content_id} listo para revisión")
 
     # Volver a idle después de 30 segundos
     time.sleep(30)
-    _write_event("idle", "")
+    _agent.write_event("idle", "")
 
     return content
 

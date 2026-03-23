@@ -95,6 +95,40 @@ class Database:
             self._conn.close()
             logger.info("Conexión PostgreSQL cerrada.")
 
+    def setup_tables(self):
+        """Crea tablas base si no existen."""
+        with self._cursor() as cur:
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS companies (
+                    id TEXT PRIMARY KEY,
+                    name TEXT NOT NULL,
+                    whatsapp TEXT,
+                    context_path TEXT,
+                    active BOOLEAN DEFAULT TRUE,
+                    created_at TIMESTAMP DEFAULT NOW()
+                )
+            """)
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS agent_logs (
+                    id SERIAL PRIMARY KEY,
+                    agent_id TEXT NOT NULL,
+                    action TEXT NOT NULL,
+                    data JSONB DEFAULT '{}',
+                    company_id TEXT,
+                    created_at TIMESTAMP DEFAULT NOW()
+                )
+            """)
+            cur.execute("""
+                INSERT INTO companies (id, name, whatsapp, context_path)
+                VALUES
+                    ('pulsarmoon', 'PulsarMoon', '59891722750',
+                     'companies/pulsarmoon/context.md'),
+                    ('verlyx', 'Verlyx', NULL,
+                     'companies/verlyx/context.md')
+                ON CONFLICT DO NOTHING
+            """)
+        logger.info("Tablas base creadas/verificadas.")
+
 
 def get_db() -> Database:
     """Retorna instancia singleton de Database."""
