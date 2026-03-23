@@ -157,6 +157,27 @@ class Database:
             """)
         logger.info("Tablas base creadas/verificadas.")
 
+    def setup_budget_tables(self):
+        """Crea tabla de presupuestos."""
+        with self._cursor() as cur:
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS budgets (
+                    id SERIAL PRIMARY KEY,
+                    lead_id INTEGER,
+                    client_name TEXT NOT NULL,
+                    services JSONB NOT NULL,
+                    total_setup INTEGER DEFAULT 0,
+                    total_monthly INTEGER DEFAULT 0,
+                    pdf_path TEXT,
+                    description TEXT,
+                    notes TEXT DEFAULT '',
+                    status TEXT DEFAULT 'pending_approval',
+                    created_at TIMESTAMP DEFAULT NOW(),
+                    reviewed_at TIMESTAMP
+                )
+            """)
+        logger.info("Tabla de presupuestos creada/verificada.")
+
     def setup_intelligence_tables(self):
         """Crea tablas para el agente de inteligencia de mercado."""
         with self._cursor() as cur:

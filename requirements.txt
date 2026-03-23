@@ -12,3 +12,4 @@ apscheduler>=3.10.0
 Pillow>=10.0.0
 feedparser>=6.0.0
 beautifulsoup4>=4.12.0
+reportlab>=4.0.0

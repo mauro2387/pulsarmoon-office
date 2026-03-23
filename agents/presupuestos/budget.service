@@ -1,0 +1,15 @@
+[Unit]
+Description=PulsarMoon Budget Agent Panel
+After=network.target postgresql.service
+
+[Service]
+Type=simple
+User=mauro
+WorkingDirectory=/home/mauro/pulsarmoon-office
+ExecStart=/home/mauro/pulsarmoon-office/venv/bin/python -m agents.presupuestos.panel_server
+Restart=on-failure
+RestartSec=10
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=multi-user.target
