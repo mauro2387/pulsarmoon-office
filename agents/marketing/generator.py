@@ -5,6 +5,7 @@ Produce blog post SEO, caption Instagram y caption Facebook.
 import logging
 import os
 import base64
+from pathlib import Path
 from dotenv import load_dotenv
 from anthropic import Anthropic
 from openai import OpenAI
@@ -15,13 +16,27 @@ logger = logging.getLogger(__name__)
 MODEL = "claude-sonnet-4-20250514"
 MAX_TOKENS = 4096
 
-# Contexto de marca para todos los prompts
-BRAND_CONTEXT = """
+# Contexto de marca hardcodeado como fallback
+_BRAND_CONTEXT_FALLBACK = """
 Empresa: PulsarMoon — agencia de desarrollo web, sistemas, aplicaciones móviles
 y marketing digital ubicada en Punta del Este, Uruguay.
 Tono: formal, elegante y cercano. Profesional pero accesible.
 Audiencia: empresas y emprendedores en Uruguay y la región.
 """
+
+_CONTEXT_FILE = Path(__file__).parent / "context.md"
+
+
+def load_context() -> str:
+    """Lee contexto de marca desde context.md. Usa fallback si no existe."""
+    if _CONTEXT_FILE.exists():
+        return _CONTEXT_FILE.read_text(encoding="utf-8")
+    logger.warning("context.md no encontrado, usando fallback")
+    return _BRAND_CONTEXT_FALLBACK
+
+
+# Cargar contexto una vez al importar
+BRAND_CONTEXT = load_context()
 
 
 def _get_client() -> Anthropic:
