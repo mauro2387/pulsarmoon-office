@@ -1,0 +1,15 @@
+[Unit]
+Description=PulsarMoon Prospector Agent
+After=network.target
+
+[Service]
+Type=simple
+User=server
+WorkingDirectory=/home/server/pulsarmoon-office
+ExecStart=/home/server/pulsarmoon-office/.venv/bin/python -m agents.prospector.scheduler
+Restart=always
+RestartSec=30
+EnvironmentFile=/home/server/pulsarmoon-office/.env
+
+[Install]
+WantedBy=multi-user.target
