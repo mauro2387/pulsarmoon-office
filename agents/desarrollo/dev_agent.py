@@ -75,11 +75,12 @@ class DevAgent(BaseAgent):
         logger.info("Carpeta del proyecto creada: %s", workspace_path)
 
         # Guardar workspace_path en form_data para send_to_copilot
+        form_data_dict = form_data if isinstance(form_data, dict) else json.loads(form_data)
         db.execute(
             """UPDATE dev_sessions
                SET form_data = %s, updated_at = NOW()
                WHERE token = %s""",
-            (json.dumps({**form_data, "workspace_path": workspace_path},
+            (json.dumps({**form_data_dict, "workspace_path": workspace_path},
                         ensure_ascii=False), token),
         )
 
@@ -138,8 +139,14 @@ class DevAgent(BaseAgent):
             return {"error": "Brief no encontrado"}
 
         # Leer workspace_path de form_data
-        form_data = json.loads(session.get("form_data") or "{}")
-        workspace_path = form_data.get(
+        raw = session.get("form_data")
+        if isinstance(raw, dict):
+            form_data_dict = raw
+        elif isinstance(raw, str):
+            form_data_dict = json.loads(raw)
+        else:
+            form_data_dict = {}
+        workspace_path = form_data_dict.get(
             "workspace_path",
             "C:\\Users\\mauro\\OneDrive\\Desktop\\pulsarmoon-office",
         )
