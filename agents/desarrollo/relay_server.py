@@ -338,7 +338,7 @@ class RelayHandler(BaseHTTPRequestHandler):
                                         f"_{summary}_"
                                     ),
                                 },
-                                timeout=10,
+                                timeout=30,
                             )
                             logger.info("[%s] WhatsApp enviado a %s",
                                         task_id, phone)
