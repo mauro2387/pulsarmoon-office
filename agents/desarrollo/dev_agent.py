@@ -70,9 +70,18 @@ class DevAgent(BaseAgent):
         nombre_safe = "".join(
             c if c.isalnum() or c in "-_ " else ""
             for c in nombre
-        ).strip().replace(" ", "_").lower()
+        ).strip().replace(" ", "_").lower().replace("/", "_")
+
+        workspace_path = (
+            f"C:\\Users\\mauro\\OneDrive\\Desktop"
+            f"\\projects\\{nombre_safe}"
+        )
 
         prompt = (
+            "ANTES DE EMPEZAR: Ejecutá en terminal:\n"
+            f"mkdir -p '{workspace_path}'\n"
+            f"Luego trabajá exclusivamente en esa carpeta "
+            "para todos los archivos del proyecto.\n\n"
             "Generá un prompt técnico detallado para GitHub Copilot Agent "
             "para crear el siguiente proyecto:\n\n"
             f"Tipo: {form_data.get('tipo_proyecto', '')}\n"
@@ -117,9 +126,9 @@ class DevAgent(BaseAgent):
         self.log("brief_generated", {"token": token, "negocio": nombre})
         return brief
 
-    # ── Python puro, sin LLM ──
+    # ── Python puro, sin LLM — async, no espera resultado ──
     def send_to_copilot(self, token: str) -> dict:
-        """Envía brief al relay bridge para ejecución en Copilot."""
+        """Envía brief al relay bridge. Retorna inmediatamente."""
         db = get_db()
         session = db.fetchone(
             "SELECT * FROM dev_sessions WHERE token = %s", (token,))
@@ -138,7 +147,7 @@ class DevAgent(BaseAgent):
                     ),
                     "timeout": 600,
                 },
-                timeout=30,
+                timeout=10,
             )
             data = resp.json()
         except requests.RequestException as e:

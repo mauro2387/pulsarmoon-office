@@ -3,9 +3,11 @@ Flask REST API para PulsarMoon Office.
 Expone endpoints para consultar el estado de los agentes.
 """
 import logging
+import threading
 import time
 from typing import Any
 
+import requests as req
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 
@@ -153,8 +155,29 @@ def dev_submit_brief() -> Any:
         return _error("Token expirado")
 
     form_data = {k: v for k, v in data.items() if k != "token"}
-    _agent.process_form(token, form_data)
+    brief = _agent.process_form(token, form_data)
     result = _agent.send_to_copilot(token)
+
+    # Notificar a n8n (fire and forget)
+    def _notify_n8n(tkn, phone, brief_text, nombre):
+        try:
+            req.post(
+                "https://n8n.vydre.me/webhook/dev-brief-received",
+                json={"token": tkn, "phone": phone,
+                      "brief_prompt": brief_text,
+                      "nombre_negocio": nombre},
+                timeout=5,
+            )
+        except Exception:
+            pass
+
+    threading.Thread(
+        target=_notify_n8n,
+        args=(token, session["phone"], brief,
+              data.get("nombre_negocio", "")),
+        daemon=True,
+    ).start()
+
     return jsonify({"status": "ok", "message": "Brief enviado a Copilot",
                      **result})
 
