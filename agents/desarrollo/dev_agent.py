@@ -5,7 +5,6 @@ Sesiones controladas por token, solo Mauro puede crearlas.
 """
 import json
 import logging
-import os
 import secrets
 import sys
 from datetime import datetime, timedelta
@@ -69,10 +68,6 @@ class DevAgent(BaseAgent):
             f"C:\\Users\\mauro\\OneDrive\\Desktop"
             f"\\projects\\{nombre_safe}"
         )
-
-        # Crear carpeta del proyecto directamente
-        os.makedirs(workspace_path, exist_ok=True)
-        logger.info("Carpeta del proyecto creada: %s", workspace_path)
 
         # Guardar workspace_path en form_data para send_to_copilot
         form_data_dict = form_data if isinstance(form_data, dict) else json.loads(form_data)

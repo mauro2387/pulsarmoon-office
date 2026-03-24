@@ -166,6 +166,15 @@ class RelayHandler(BaseHTTPRequestHandler):
     def _execute_background(task_id: str, message: str,
                             workspace: str, timeout: int):
         """Busca bridge, envía prompt y hace polling en background."""
+        # Crear carpeta del proyecto en Windows si no existe
+        if workspace:
+            try:
+                os.makedirs(workspace, exist_ok=True)
+                logger.info("[%s] Carpeta creada: %s", task_id, workspace)
+            except Exception as e:
+                logger.warning("[%s] No se pudo crear carpeta %s: %s",
+                               task_id, workspace, e)
+
         bridge = _find_active_bridge()
         if not bridge and workspace:
             logger.info("[%s] Bridge no activo, abriendo VS Code...",
