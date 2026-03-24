@@ -297,6 +297,17 @@ class RelayHandler(BaseHTTPRequestHandler):
                 try:
                     result = json.loads(
                         result_path.read_text(encoding="utf-8"))
+                    # Esperar para que Copilot termine de escribir
+                    logger.info("[%s] result.json encontrado, "
+                                "esperando 10s para confirmar...",
+                                task_id)
+                    time.sleep(10)
+                    # Releer por si cambió
+                    try:
+                        result = json.loads(
+                            result_path.read_text(encoding="utf-8"))
+                    except Exception:
+                        pass
                     logger.info("[%s] Tarea completada", task_id)
                     TASK_RESULTS[task_id] = {
                         "status": "done",

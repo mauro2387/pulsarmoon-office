@@ -200,6 +200,29 @@ def dev_check_status(token: str) -> Any:
     return jsonify(result)
 
 
+@app.route("/dev/session/complete", methods=["POST"])
+def dev_complete_session() -> Any:
+    """n8n llama esto cuando Copilot terminó el proyecto."""
+    from agents.desarrollo.dev_agent import _agent
+    from db.database import get_db
+    data = request.get_json()
+    if not data or not data.get("token"):
+        return _error("token requerido")
+
+    token = data["token"]
+    vercel_url = data.get("vercel_url", "")
+
+    db = get_db()
+    db.execute(
+        """UPDATE dev_sessions
+           SET status = 'completed', vercel_url = %s, updated_at = NOW()
+           WHERE token = %s""",
+        (vercel_url, token),
+    )
+    _agent.log("session_completed", {"token": token, "vercel_url": vercel_url})
+    return jsonify({"status": "ok", "token": token, "vercel_url": vercel_url})
+
+
 # ─── Iniciar servidor ──────────────────────────────────────────────────────────
 
 def run(host: str, port: int) -> None:
