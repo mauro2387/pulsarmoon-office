@@ -160,6 +160,8 @@ class DevAgent(BaseAgent):
                     "message": session["brief_prompt"],
                     "workspace": workspace_path,
                     "timeout": 600,
+                    "phone": session.get("phone", ""),
+                    "token": token,
                 },
                 timeout=10,
             )

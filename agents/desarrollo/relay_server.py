@@ -209,6 +209,8 @@ class RelayHandler(BaseHTTPRequestHandler):
         message = data.get("message", "")
         workspace = data.get("workspace", "")
         timeout = min(data.get("timeout", 300), 900)
+        phone = data.get("phone", "")
+        token = data.get("token", "")
 
         if not message:
             self._send_json({"error": "message requerido"}, 400)
@@ -229,14 +231,15 @@ class RelayHandler(BaseHTTPRequestHandler):
         # Ejecutar en background thread
         t = Thread(
             target=self._execute_background,
-            args=(task_id, message, workspace, timeout),
+            args=(task_id, message, workspace, timeout, phone, token),
             daemon=True,
         )
         t.start()
 
     @staticmethod
     def _execute_background(task_id: str, message: str,
-                            workspace: str, timeout: int):
+                            workspace: str, timeout: int,
+                            phone: str = "", token: str = ""):
         """Busca bridge, envía prompt y hace polling en background."""
         # Crear carpeta y scaffold del proyecto
         if workspace:
@@ -315,6 +318,50 @@ class RelayHandler(BaseHTTPRequestHandler):
                         "result": result,
                         "summary": result.get("summary", ""),
                     }
+
+                    # Notificar via WhatsApp directamente
+                    vercel_url = result.get("vercel_url", "")
+                    summary = result.get("summary",
+                                         "Proyecto completado")
+                    if phone and vercel_url:
+                        try:
+                            _post_json(
+                                "https://wa.vydre.me/send",
+                                {
+                                    "number": phone,
+                                    "message": (
+                                        f"\u2705 *Proyecto listo!*\n\n"
+                                        f"\U0001f517 *Link de producci\u00f3n:*\n"
+                                        f"{vercel_url}\n\n"
+                                        f"\U0001f4c4 Documento de entrega "
+                                        f"generado en docs/\n\n"
+                                        f"_{summary}_"
+                                    ),
+                                },
+                                timeout=10,
+                            )
+                            logger.info("[%s] WhatsApp enviado a %s",
+                                        task_id, phone)
+                        except Exception as e:
+                            logger.warning(
+                                "[%s] Error enviando WhatsApp: %s",
+                                task_id, e)
+
+                    # Actualizar DB via API
+                    if token:
+                        try:
+                            _post_json(
+                                "https://api.vydre.me/dev/session/complete",
+                                {"token": token,
+                                 "vercel_url": vercel_url,
+                                 "summary": summary},
+                                timeout=10,
+                            )
+                        except Exception as e:
+                            logger.warning(
+                                "[%s] Error actualizando DB: %s",
+                                task_id, e)
+
                     return
                 except json.JSONDecodeError:
                     pass
