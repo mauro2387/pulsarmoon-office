@@ -22,6 +22,7 @@ logging.basicConfig(
 logger = logging.getLogger("relay")
 
 BRIDGE_DIR = Path.home() / ".copilot-bridge"
+FORMS_DIR = Path(__file__).resolve().parent / "forms"
 RELAY_PORT = 7820
 POLL_INTERVAL = 5
 BRIDGE_WAIT_TIMEOUT = 60
@@ -75,6 +76,17 @@ class RelayHandler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(json.dumps(data, ensure_ascii=False).encode())
 
+    def _send_html(self, filepath: Path):
+        """Sirve archivo HTML estático."""
+        if not filepath.exists():
+            self._send_json({"error": "Not found"}, 404)
+            return
+        self.send_response(200)
+        self.send_header("Content-Type", "text/html; charset=utf-8")
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.end_headers()
+        self.wfile.write(filepath.read_bytes())
+
     def _read_body(self) -> dict:
         length = int(self.headers.get("Content-Length", 0))
         if length == 0:
@@ -90,9 +102,12 @@ class RelayHandler(BaseHTTPRequestHandler):
         self.end_headers()
 
     def do_GET(self):
-        if self.path == "/health":
+        path = self.path.split("?")[0]  # Ignorar query params para routing
+        if path == "/health":
             self._handle_health()
-        elif self.path.startswith("/status/"):
+        elif path in ("/", "/dev", "/dev/"):
+            self._send_html(FORMS_DIR / "index.html")
+        elif path.startswith("/status/"):
             self._handle_status()
         else:
             self._send_json({"error": "Not found"}, 404)
