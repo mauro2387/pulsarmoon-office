@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PulsarMoon — Brief de Proyecto</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:#0f0f1a;color:#e6edf3;
+min-height:100vh;padding:20px}
+.container{max-width:520px;margin:0 auto}
+.logo{text-align:center;margin-bottom:24px}
+.logo h1{font-size:20px;color:#4f8ef7;letter-spacing:-.5px}
+.logo p{color:#8b949e;font-size:13px;margin-top:4px}
+form{display:flex;flex-direction:column;gap:16px}
+.field{display:flex;flex-direction:column;gap:4px}
+.field label{font-size:13px;color:#8b949e;font-weight:500}
+.field label .req{color:#f85149;margin-left:2px}
+.field input,.field select,.field textarea{width:100%;padding:10px 12px;
+background:#161b28;color:#e6edf3;border:1px solid #30363d;border-radius:8px;
+font-size:14px;font-family:inherit;outline:none;transition:border .2s}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:#4f8ef7}
+.field textarea{resize:vertical;min-height:80px}
+.field select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%238b949e' viewBox='0 0 16 16'%3E%3Cpath d='M8 11L3 6h10z'/%3E%3C/svg%3E");
+background-repeat:no-repeat;background-position:right 12px center}
+.field .counter{text-align:right;font-size:11px;color:#484f58}
+.submit-btn{width:100%;padding:14px;background:#4f8ef7;color:#fff;border:none;
+border-radius:8px;font-size:16px;font-weight:600;cursor:pointer;
+transition:background .2s;margin-top:8px}
+.submit-btn:hover{background:#3a7ae0}
+.submit-btn:disabled{background:#30363d;color:#484f58;cursor:not-allowed}
+.spinner{display:none;width:20px;height:20px;border:2px solid #fff3;
+border-top-color:#fff;border-radius:50%;animation:spin .6s linear infinite;
+margin:0 auto}
+@keyframes spin{to{transform:rotate(360deg)}}
+.msg{text-align:center;padding:20px;border-radius:8px;font-size:15px;display:none}
+.msg-ok{background:#2386361a;color:#3fb950;border:1px solid #238636}
+.msg-err{background:#da36331a;color:#f85149;border:1px solid #da3633}
+.msg-invalid{background:#da36331a;color:#f85149;border:1px solid #da3633;
+display:block;text-align:center;padding:40px;margin-top:20px;border-radius:8px}
+</style>
+</head>
+<body>
+<div class="container">
+<div class="logo">
+<h1>🌙 PulsarMoon</h1>
+<p>Completá el brief en menos de 1 minuto</p>
+</div>
+
+<div id="invalid" class="msg-invalid" style="display:none">
+⚠️ Link inválido — pedile uno nuevo a Mauro
+</div>
+
+<form id="form" style="display:none" onsubmit="return send(event)">
+<div class="field">
+<label>Tipo de proyecto <span class="req">*</span></label>
+<select name="tipo_proyecto" required>
+<option value="">Seleccioná...</option>
+<option value="web">Sitio web</option>
+<option value="ecommerce">Tienda online</option>
+<option value="sistema">Sistema web / panel</option>
+<option value="app">App móvil</option>
+<option value="landing">Landing page</option>
+<option value="otro">Otro</option>
+</select>
+</div>
+
+<div class="field">
+<label>Nombre del negocio <span class="req">*</span></label>
+<input name="nombre_negocio" required placeholder="Ej: Clínica Dermatel">
+</div>
+
+<div class="field">
+<label>Rubro <span class="req">*</span></label>
+<input name="rubro" required placeholder="Ej: clínica, restaurant, inmobiliaria...">
+</div>
+
+<div class="field">
+<label>Descripción <span class="req">*</span></label>
+<textarea name="descripcion" required maxlength="500"
+placeholder="Describí brevemente qué necesitás. Ej: sitio para mostrar servicios, con agenda online y galería de fotos"
+oninput="updateCounter(this)"></textarea>
+<div class="counter"><span id="charCount">0</span>/500</div>
+</div>
+
+<div class="field">
+<label>Páginas / Funcionalidades</label>
+<textarea name="paginas_funcionalidades"
+placeholder="Ej: Home, Servicios, Equipo, Contacto, Agenda"></textarea>
+</div>
+
+<div class="field">
+<label>Estilo y colores</label>
+<input name="estilo_colores" placeholder="Ej: moderno y minimalista, colores verde y blanco">
+</div>
+
+<div class="field">
+<label>Plazo</label>
+<select name="plazo">
+<option value="normal">Plazo estándar (2-4 semanas)</option>
+<option value="urgente">Lo antes posible (1-2 semanas)</option>
+<option value="flexible">Sin apuro</option>
+</select>
+</div>
+
+<div class="field">
+<label>Presupuesto</label>
+<select name="presupuesto">
+<option value="a_discutir">A discutir</option>
+<option value="basico">Básico (hasta $15.000 UYU)</option>
+<option value="medio">Medio ($15.000 - $40.000 UYU)</option>
+<option value="premium">Premium (más de $40.000 UYU)</option>
+</select>
+</div>
+
+<button type="submit" class="submit-btn" id="submitBtn">Enviar brief →</button>
+<div class="spinner" id="spinner"></div>
+</form>
+
+<div id="msgOk" class="msg msg-ok">✅ Brief recibido! Mauro lo revisará en breve.</div>
+<div id="msgErr" class="msg msg-err">❌ Error al enviar. Intentá de nuevo.</div>
+</div>
+
+<script>
+const API = 'https://api.vydre.me';
+const params = new URLSearchParams(window.location.search);
+const token = params.get('token');
+
+if (!token) {
+  document.getElementById('invalid').style.display = 'block';
+} else {
+  document.getElementById('form').style.display = 'flex';
+}
+
+function updateCounter(el) {
+  document.getElementById('charCount').textContent = el.value.length;
+}
+
+async function send(e) {
+  e.preventDefault();
+  const btn = document.getElementById('submitBtn');
+  const spinner = document.getElementById('spinner');
+  btn.disabled = true;
+  spinner.style.display = 'block';
+
+  const fd = new FormData(e.target);
+  const payload = {token};
+  for (const [k, v] of fd.entries()) payload[k] = v;
+
+  try {
+    const res = await fetch(API + '/dev/brief', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (res.ok && !data.error) {
+      e.target.style.display = 'none';
+      document.getElementById('msgOk').style.display = 'block';
+    } else {
+      document.getElementById('msgErr').style.display = 'block';
+      document.getElementById('msgErr').textContent =
+        '❌ ' + (data.error || 'Error al enviar');
+    }
+  } catch {
+    document.getElementById('msgErr').style.display = 'block';
+  }
+  spinner.style.display = 'none';
+  btn.disabled = false;
+}
+</script>
+</body>
+</html>

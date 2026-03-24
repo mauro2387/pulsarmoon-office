@@ -112,6 +112,61 @@ def list_events() -> Any:
         return _error("Error interno al obtener eventos", 500)
 
 
+# ─── Desarrollo ────────────────────────────────────────────────────────────────
+
+@app.route("/dev/session", methods=["POST"])
+def dev_create_session() -> Any:
+    """Crea sesión de desarrollo con token único."""
+    from agents.desarrollo.dev_agent import _agent
+    data = request.get_json()
+    if not data or not data.get("phone"):
+        return _error("phone requerido")
+    result = _agent.create_session(data["phone"])
+    return jsonify(result)
+
+
+@app.route("/dev/brief", methods=["POST"])
+def dev_submit_brief() -> Any:
+    """Recibe formulario, genera brief, envía a Copilot."""
+    from agents.desarrollo.dev_agent import _agent
+    from db.database import get_db
+    data = request.get_json()
+    if not data or not data.get("token"):
+        return _error("token requerido")
+
+    token = data["token"]
+    db = get_db()
+    session = db.fetchone(
+        "SELECT * FROM dev_sessions WHERE token = %s", (token,))
+    if not session:
+        return _error("Token inválido", 404)
+    if session["status"] != "pending":
+        return _error("Sesión ya procesada")
+
+    # Verificar expiración (24hs)
+    from datetime import datetime, timedelta, timezone
+    created = session["created_at"]
+    if hasattr(created, 'tzinfo') and created.tzinfo is None:
+        created = created.replace(tzinfo=timezone.utc)
+    now = datetime.now(timezone.utc)
+    if now - created > timedelta(hours=24):
+        return _error("Token expirado")
+
+    form_data = {k: v for k, v in data.items() if k != "token"}
+    _agent.process_form(token, form_data)
+    result = _agent.send_to_copilot(token)
+    return jsonify({"status": "ok", "message": "Brief enviado a Copilot",
+                     **result})
+
+
+@app.route("/dev/status/<string:token>", methods=["GET"])
+def dev_check_status(token: str) -> Any:
+    """Consulta estado de una sesión de desarrollo."""
+    from agents.desarrollo.dev_agent import _agent
+    result = _agent.check_completion(token)
+    return jsonify(result)
+
+
 # ─── Iniciar servidor ──────────────────────────────────────────────────────────
 
 def run(host: str, port: int) -> None:

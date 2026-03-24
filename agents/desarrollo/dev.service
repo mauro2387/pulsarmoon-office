@@ -1,0 +1,15 @@
+[Unit]
+Description=PulsarMoon Dev Agent (futuro panel)
+After=network.target
+
+[Service]
+Type=simple
+User=server
+WorkingDirectory=/home/server/pulsarmoon-office
+ExecStart=/home/server/pulsarmoon-office/.venv/bin/python -m agents.desarrollo.dev_agent
+Restart=on-failure
+RestartSec=10
+EnvironmentFile=/home/server/pulsarmoon-office/.env
+
+[Install]
+WantedBy=multi-user.target

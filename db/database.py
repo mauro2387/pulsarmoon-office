@@ -157,6 +157,25 @@ class Database:
             """)
         logger.info("Tablas base creadas/verificadas.")
 
+    def setup_dev_tables(self):
+        """Crea tabla de sesiones de desarrollo."""
+        with self._cursor() as cur:
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS dev_sessions (
+                    id SERIAL PRIMARY KEY,
+                    token TEXT UNIQUE NOT NULL,
+                    phone TEXT NOT NULL,
+                    status TEXT DEFAULT 'pending',
+                    form_data JSONB,
+                    brief_prompt TEXT,
+                    copilot_task_id TEXT,
+                    vercel_url TEXT,
+                    created_at TIMESTAMP DEFAULT NOW(),
+                    updated_at TIMESTAMP DEFAULT NOW()
+                )
+            """)
+        logger.info("Tabla dev_sessions creada/verificada.")
+
     def setup_followup_tables(self):
         """Crea tabla de cola de follow-ups y columna en leads."""
         with self._cursor() as cur:
