@@ -326,7 +326,7 @@ class RelayHandler(BaseHTTPRequestHandler):
                     if phone and vercel_url:
                         try:
                             _post_json(
-                                "https://wa.vydre.me/send",
+                                "http://192.168.1.11:3000/send",
                                 {
                                     "number": phone,
                                     "message": (
@@ -351,7 +351,7 @@ class RelayHandler(BaseHTTPRequestHandler):
                     if token:
                         try:
                             _post_json(
-                                "https://api.vydre.me/dev/session/complete",
+                                "http://192.168.1.11:8766/dev/session/complete",
                                 {"token": token,
                                  "vercel_url": vercel_url,
                                  "summary": summary},
