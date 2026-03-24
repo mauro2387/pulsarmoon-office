@@ -6,6 +6,7 @@ Puerto: 7820 | Host: 0.0.0.0
 import json
 import os
 import glob
+import shutil
 import subprocess
 import time
 import logging
@@ -28,6 +29,23 @@ POLL_INTERVAL = 5
 BRIDGE_WAIT_TIMEOUT = 60
 
 # Resultados de tareas en memoria (background threads guardan aquí)
+
+
+def _find_vscode() -> str:
+    """Encuentra el ejecutable de VS Code en Windows."""
+    code = shutil.which("code")
+    if code:
+        return code
+    candidates = [
+        r"C:\Program Files\Microsoft VS Code\bin\code.cmd",
+        r"C:\Program Files (x86)\Microsoft VS Code\bin\code.cmd",
+        os.path.expandvars(
+            r"%LOCALAPPDATA%\Programs\Microsoft VS Code\bin\code.cmd"),
+    ]
+    for c in candidates:
+        if os.path.exists(c):
+            return c
+    return "code"
 TASK_RESULTS: dict[str, dict] = {}
 
 
@@ -179,7 +197,9 @@ class RelayHandler(BaseHTTPRequestHandler):
         if not bridge and workspace:
             logger.info("[%s] Bridge no activo, abriendo VS Code...",
                         task_id)
-            subprocess.Popen(["code", "--new-window", workspace])
+            vscode = _find_vscode()
+            subprocess.Popen([vscode, "--new-window", workspace],
+                             shell=True)
             waited = 0
             while waited < BRIDGE_WAIT_TIMEOUT:
                 time.sleep(2)
