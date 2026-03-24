@@ -347,11 +347,11 @@ class RelayHandler(BaseHTTPRequestHandler):
                                 "[%s] Error enviando WhatsApp: %s",
                                 task_id, e)
 
-                    # Actualizar DB via API
+                    # Actualizar DB via API (server-main)
                     if token:
                         try:
                             _post_json(
-                                "http://192.168.1.11:8766/dev/session/complete",
+                                "http://192.168.1.19:8766/dev/session/complete",
                                 {"token": token,
                                  "vercel_url": vercel_url,
                                  "summary": summary},
