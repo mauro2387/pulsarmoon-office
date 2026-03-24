@@ -179,7 +179,7 @@ class RelayHandler(BaseHTTPRequestHandler):
         if not bridge and workspace:
             logger.info("[%s] Bridge no activo, abriendo VS Code...",
                         task_id)
-            subprocess.Popen(["code", workspace])
+            subprocess.Popen(["code", "--new-window", workspace])
             waited = 0
             while waited < BRIDGE_WAIT_TIMEOUT:
                 time.sleep(2)
