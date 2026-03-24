@@ -208,7 +208,7 @@ class RelayHandler(BaseHTTPRequestHandler):
         data = self._read_body()
         message = data.get("message", "")
         workspace = data.get("workspace", "")
-        timeout = min(data.get("timeout", 300), 1800)
+        timeout = min(data.get("timeout", 300), 900)
 
         if not message:
             self._send_json({"error": "message requerido"}, 400)
@@ -299,9 +299,9 @@ class RelayHandler(BaseHTTPRequestHandler):
                         result_path.read_text(encoding="utf-8"))
                     # Esperar para que Copilot termine de escribir
                     logger.info("[%s] result.json encontrado, "
-                                "esperando 10s para confirmar...",
+                                "esperando 30s para confirmar...",
                                 task_id)
-                    time.sleep(10)
+                    time.sleep(30)
                     # Releer por si cambió
                     try:
                         result = json.loads(
