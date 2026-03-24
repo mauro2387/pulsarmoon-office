@@ -5,6 +5,7 @@ Sesiones controladas por token, solo Mauro puede crearlas.
 """
 import json
 import logging
+import os
 import secrets
 import sys
 from datetime import datetime, timedelta
@@ -58,14 +59,6 @@ class DevAgent(BaseAgent):
         self.write_event("working", "Generando brief técnico...")
         db = get_db()
 
-        # Guardar form data
-        db.execute(
-            """UPDATE dev_sessions
-               SET form_data = %s, updated_at = NOW()
-               WHERE token = %s""",
-            (json.dumps(form_data, ensure_ascii=False), token),
-        )
-
         nombre = form_data.get("nombre_negocio", "")
         nombre_safe = "".join(
             c if c.isalnum() or c in "-_ " else ""
@@ -77,11 +70,20 @@ class DevAgent(BaseAgent):
             f"\\projects\\{nombre_safe}"
         )
 
+        # Crear carpeta del proyecto directamente
+        os.makedirs(workspace_path, exist_ok=True)
+        logger.info("Carpeta del proyecto creada: %s", workspace_path)
+
+        # Guardar workspace_path en form_data para send_to_copilot
+        db.execute(
+            """UPDATE dev_sessions
+               SET form_data = %s, updated_at = NOW()
+               WHERE token = %s""",
+            (json.dumps({**form_data, "workspace_path": workspace_path},
+                        ensure_ascii=False), token),
+        )
+
         prompt = (
-            "ANTES DE EMPEZAR: Ejecutá en terminal:\n"
-            f"mkdir -p '{workspace_path}'\n"
-            f"Luego trabajá exclusivamente en esa carpeta "
-            "para todos los archivos del proyecto.\n\n"
             "Generá un prompt técnico detallado para GitHub Copilot Agent "
             "para crear el siguiente proyecto:\n\n"
             f"Tipo: {form_data.get('tipo_proyecto', '')}\n"
@@ -135,16 +137,20 @@ class DevAgent(BaseAgent):
         if not session or not session.get("brief_prompt"):
             return {"error": "Brief no encontrado"}
 
+        # Leer workspace_path de form_data
+        form_data = json.loads(session.get("form_data") or "{}")
+        workspace_path = form_data.get(
+            "workspace_path",
+            "C:\\Users\\mauro\\OneDrive\\Desktop\\pulsarmoon-office",
+        )
+
         self.write_event("working", "Enviando a Copilot...")
         try:
             resp = requests.post(
                 f"{BRIDGE_URL}/execute",
                 json={
                     "message": session["brief_prompt"],
-                    "workspace": (
-                        "C:\\Users\\mauro\\OneDrive\\Desktop"
-                        "\\pulsarmoon-office"
-                    ),
+                    "workspace": workspace_path,
                     "timeout": 600,
                 },
                 timeout=10,

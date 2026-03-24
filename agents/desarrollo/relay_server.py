@@ -27,6 +27,9 @@ RELAY_PORT = 7820
 POLL_INTERVAL = 5
 BRIDGE_WAIT_TIMEOUT = 60
 
+# Resultados de tareas en memoria (background threads guardan aquí)
+TASK_RESULTS: dict[str, dict] = {}
+
 
 def _find_active_bridge() -> dict | None:
     """Busca bridge activo en ~/.copilot-bridge/*.json."""
@@ -139,13 +142,34 @@ class RelayHandler(BaseHTTPRequestHandler):
             self._send_json({"error": "message requerido"}, 400)
             return
 
-        logger.info("Execute: mensaje de %d chars, timeout=%ds",
-                     len(message), timeout)
+        task_id = f"pending-{int(time.time())}"
+        logger.info("Execute [%s]: mensaje de %d chars, timeout=%ds",
+                     task_id, len(message), timeout)
 
-        # Buscar bridge activo
+        # Responder inmediatamente con taskId
+        TASK_RESULTS[task_id] = {"status": "processing"}
+        self._send_json({
+            "status": "accepted",
+            "taskId": task_id,
+            "message": "Procesando en background",
+        })
+
+        # Ejecutar en background thread
+        t = Thread(
+            target=self._execute_background,
+            args=(task_id, message, workspace, timeout),
+            daemon=True,
+        )
+        t.start()
+
+    @staticmethod
+    def _execute_background(task_id: str, message: str,
+                            workspace: str, timeout: int):
+        """Busca bridge, envía prompt y hace polling en background."""
         bridge = _find_active_bridge()
         if not bridge and workspace:
-            logger.info("Bridge no activo, abriendo VS Code...")
+            logger.info("[%s] Bridge no activo, abriendo VS Code...",
+                        task_id)
             subprocess.Popen(["code", workspace])
             waited = 0
             while waited < BRIDGE_WAIT_TIMEOUT:
@@ -156,13 +180,12 @@ class RelayHandler(BaseHTTPRequestHandler):
                     break
 
         if not bridge:
-            self._send_json({
-                "status": "error",
-                "error": "Bridge no disponible",
-            }, 503)
+            logger.error("[%s] Bridge no disponible", task_id)
+            TASK_RESULTS[task_id] = {
+                "status": "error", "error": "Bridge no disponible",
+            }
             return
 
-        # Enviar prompt al bridge
         port = bridge["port"]
         try:
             resp = _post_json(
@@ -171,45 +194,52 @@ class RelayHandler(BaseHTTPRequestHandler):
                 timeout=30,
             )
         except (URLError, OSError) as e:
-            logger.error("Error enviando al bridge: %s", e)
-            self._send_json({"status": "error", "error": str(e)}, 502)
+            logger.error("[%s] Error enviando al bridge: %s", task_id, e)
+            TASK_RESULTS[task_id] = {
+                "status": "error", "error": str(e),
+            }
             return
 
-        task_id = resp.get("taskId", "")
+        bridge_task_id = resp.get("taskId", task_id)
         task_dir = resp.get("taskDir", "")
-        logger.info("Tarea creada: %s en %s", task_id, task_dir)
+        logger.info("[%s] Tarea bridge: %s en %s",
+                     task_id, bridge_task_id, task_dir)
 
         # Polling de result.json
         result_path = Path(task_dir) / "result.json" if task_dir else None
         start = time.time()
-        result = None
 
         while time.time() - start < timeout:
             if result_path and result_path.exists():
                 try:
                     result = json.loads(
                         result_path.read_text(encoding="utf-8"))
-                    break
+                    logger.info("[%s] Tarea completada", task_id)
+                    TASK_RESULTS[task_id] = {
+                        "status": "done",
+                        "taskId": bridge_task_id,
+                        "result": result,
+                        "summary": result.get("summary", ""),
+                    }
+                    return
                 except json.JSONDecodeError:
                     pass
             time.sleep(POLL_INTERVAL)
 
-        if result:
-            logger.info("Tarea completada: %s", task_id)
-            self._send_json({
-                "status": "done", "taskId": task_id,
-                "result": result,
-                "summary": result.get("summary", ""),
-            })
-        else:
-            logger.warning("Timeout para tarea: %s", task_id)
-            self._send_json({
-                "status": "timeout", "taskId": task_id,
-            })
+        logger.warning("[%s] Timeout", task_id)
+        TASK_RESULTS[task_id] = {
+            "status": "timeout", "taskId": bridge_task_id,
+        }
 
     def _handle_status(self):
         task_id = self.path.split("/status/", 1)[-1]
-        # Buscar result en directorio del bridge
+
+        # Primero buscar en resultados en memoria
+        if task_id in TASK_RESULTS:
+            self._send_json({"taskId": task_id, **TASK_RESULTS[task_id]})
+            return
+
+        # Fallback: buscar result en directorio del bridge
         bridge = _find_active_bridge()
         if not bridge:
             self._send_json({"status": "unknown", "taskId": task_id})
