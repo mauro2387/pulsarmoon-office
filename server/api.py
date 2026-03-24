@@ -158,14 +158,24 @@ def dev_submit_brief() -> Any:
     brief = _agent.process_form(token, form_data)
     result = _agent.send_to_copilot(token)
 
+    # Leer workspace_path de form_data guardado por process_form
+    updated_session = db.fetchone(
+        "SELECT form_data FROM dev_sessions WHERE token = %s", (token,))
+    _fd = updated_session.get("form_data", {}) if updated_session else {}
+    if isinstance(_fd, str):
+        import json as _json
+        _fd = _json.loads(_fd)
+    workspace_path = _fd.get("workspace_path", "")
+
     # Notificar a n8n (fire and forget)
-    def _notify_n8n(tkn, phone, brief_text, nombre):
+    def _notify_n8n(tkn, phone, brief_text, nombre, ws_path):
         try:
             req.post(
                 "https://n8n.vydre.me/webhook/dev-brief-received",
                 json={"token": tkn, "phone": phone,
                       "brief_prompt": brief_text,
-                      "nombre_negocio": nombre},
+                      "nombre_negocio": nombre,
+                      "workspace_path": ws_path},
                 timeout=5,
             )
         except Exception:
@@ -174,7 +184,7 @@ def dev_submit_brief() -> Any:
     threading.Thread(
         target=_notify_n8n,
         args=(token, session["phone"], brief,
-              data.get("nombre_negocio", "")),
+              data.get("nombre_negocio", ""), workspace_path),
         daemon=True,
     ).start()
 
