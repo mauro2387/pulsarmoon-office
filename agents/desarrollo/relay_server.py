@@ -49,6 +49,60 @@ def _find_vscode() -> str:
 TASK_RESULTS: dict[str, dict] = {}
 
 
+def _scaffold_project(workspace: str, tipo: str = "web") -> bool:
+    """
+    Crea el scaffold del proyecto en Windows antes de abrir VSCode.
+    Corre npx create-next-app de manera no interactiva desde el relay.
+    Retorna True si tuvo éxito.
+    """
+    if not workspace:
+        return False
+
+    os.makedirs(workspace, exist_ok=True)
+
+    # Solo hacer scaffold si la carpeta está vacía
+    if os.listdir(workspace):
+        logger.info("Carpeta ya tiene contenido, saltando scaffold")
+        return True
+
+    logger.info("Creando scaffold Next.js en: %s", workspace)
+
+    try:
+        result = subprocess.run(
+            [
+                "npx", "create-next-app@14", ".",
+                "--typescript",
+                "--tailwind",
+                "--eslint",
+                "--app",
+                "--src-dir",
+                "--import-alias", "@/*",
+                "--use-npm",
+                "--no-git",
+                "--yes",
+            ],
+            cwd=workspace,
+            capture_output=True,
+            text=True,
+            timeout=120,
+            shell=True,
+        )
+
+        if result.returncode == 0:
+            logger.info("Scaffold creado exitosamente en: %s", workspace)
+            return True
+        else:
+            logger.warning("Scaffold falló: %s", result.stderr[:200])
+            return False
+
+    except subprocess.TimeoutExpired:
+        logger.warning("Scaffold timeout en: %s", workspace)
+        return False
+    except Exception as e:
+        logger.warning("Scaffold error: %s", e)
+        return False
+
+
 def _find_active_bridge() -> dict | None:
     """Busca bridge activo en ~/.copilot-bridge/*.json."""
     if not BRIDGE_DIR.exists():
@@ -184,14 +238,14 @@ class RelayHandler(BaseHTTPRequestHandler):
     def _execute_background(task_id: str, message: str,
                             workspace: str, timeout: int):
         """Busca bridge, envía prompt y hace polling en background."""
-        # Crear carpeta del proyecto en Windows si no existe
+        # Crear carpeta y scaffold del proyecto
         if workspace:
             try:
                 os.makedirs(workspace, exist_ok=True)
                 logger.info("[%s] Carpeta creada: %s", task_id, workspace)
+                _scaffold_project(workspace)
             except Exception as e:
-                logger.warning("[%s] No se pudo crear carpeta %s: %s",
-                               task_id, workspace, e)
+                logger.warning("[%s] Error en setup: %s", task_id, e)
 
         bridge = _find_active_bridge()
         if not bridge and workspace:
