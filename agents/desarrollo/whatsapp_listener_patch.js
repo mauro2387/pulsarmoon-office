@@ -80,4 +80,13 @@ if (MAURO_NUMBERS.includes(msg.from)) {
             await client.sendMessage(msg.from, `❌ Error rechazando ${projectId}. Server no responde.`);
         }
     }
+
+    // Detectar solicitud de link al roadmap
+    const pmRoadmapMatch = msg.body.match(/^roadmap\s+(PM-\d{4}-\d{3})$/i);
+    if (pmRoadmapMatch) {
+        const projectId = pmRoadmapMatch[1].toUpperCase();
+        await client.sendMessage(msg.from,
+            `🗺️ Roadmap: https://api.vydre.me/pm/roadmap/${projectId}`
+        );
+    }
 }
