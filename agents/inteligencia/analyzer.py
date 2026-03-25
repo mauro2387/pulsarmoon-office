@@ -83,8 +83,8 @@ def _get_history() -> tuple[list[str], list[str]]:
         pass
     try:
         rows = db.fetchall(
-            "SELECT DISTINCT sector FROM leads "
-            "ORDER BY MAX(created_at) DESC LIMIT 4")
+            "SELECT sector FROM leads "
+            "GROUP BY sector ORDER BY MAX(created_at) DESC LIMIT 4")
         sectors = [r["sector"] for r in rows]
     except Exception:
         pass
