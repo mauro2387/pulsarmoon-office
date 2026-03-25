@@ -291,7 +291,8 @@ class PMAgent(BaseAgent):
         budget = float(p.get("budget_agreed") or 0)
         lines.append(f"💰 Presupuesto: ${budget:.0f} USD")
         lines.append("")
-        lines.append("Respondé *APROBAR* o *RECHAZAR*")
+        lines.append(
+            f"Respondé:\n*APROBAR {project_id}*\n*RECHAZAR {project_id}*")
         return "\n".join(lines)
 
     # ── Python puro, sin LLM ──
