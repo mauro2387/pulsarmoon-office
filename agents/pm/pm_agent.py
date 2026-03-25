@@ -8,7 +8,7 @@ import logging
 import os
 import sys
 import time
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from pathlib import Path
 from urllib.request import Request, urlopen
 from urllib.error import URLError
@@ -126,9 +126,14 @@ class PMAgent(BaseAgent):
         form = json.loads(raw) if isinstance(raw, str) else (raw or {})
         brief = session.get("brief_prompt", "")
         client = form.get("nombre_negocio", "Cliente")
-        deadline = form.get("plazo", "4 semanas")
+        plazo = form.get("plazo", "normal")
         tipo = form.get("tipo_proyecto", "web")
         vercel_url = session.get("vercel_url", "")
+
+        # Convertir plazo a fecha real
+        plazo_days = {"urgente": 14, "normal": 28, "flexible": 42}
+        deadline = date.today() + timedelta(
+            days=plazo_days.get(plazo, 28))
 
         # Generar ID: PM-2026-001, PM-2026-002...
         year = date.today().year
@@ -142,7 +147,8 @@ class PMAgent(BaseAgent):
             seq = 1
         project_id = f"PM-{year}-{seq:03d}"
 
-        roadmap = self.generate_roadmap(brief, client, deadline)
+        roadmap = self.generate_roadmap(brief, client,
+                                         deadline.isoformat())
         if roadmap is None:
             return None
 
