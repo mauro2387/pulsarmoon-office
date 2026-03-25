@@ -14,7 +14,7 @@ if PROJECT_ROOT not in sys.path:
 from agents.base_agent import BaseAgent
 from agents.inteligencia.collector import (
     collect_google_trends,
-    collect_mercadolibre_signals,
+    collect_impo_signals,
     collect_rss_feeds,
     save_raw_signals,
 )
@@ -58,21 +58,22 @@ class IntelligenceAgent(BaseAgent):
             logger.error("Error RSS: %s", e)
             signals_rss = []
 
-        # 3. MercadoLibre
-        self.write_event("working", "Analizando Mercado Libre Uruguay...")
+        # 3. IMPO — empresas nuevas
+        self.write_event("working",
+                         "Buscando empresas nuevas en Diario Oficial...")
         try:
-            signals_ml = collect_mercadolibre_signals()
+            signals_impo = collect_impo_signals()
         except Exception as e:
-            logger.error("Error MercadoLibre: %s", e)
-            signals_ml = []
+            logger.error("Error IMPO: %s", e)
+            signals_impo = []
 
         # 4. Guardar señales
-        all_signals = signals_trends + signals_rss + signals_ml
+        all_signals = signals_trends + signals_rss + signals_impo
         saved = save_raw_signals(all_signals)
         self.log("signals_collected", {
             "trends": len(signals_trends),
             "rss": len(signals_rss),
-            "mercadolibre": len(signals_ml),
+            "impo": len(signals_impo),
             "saved": saved,
         })
 

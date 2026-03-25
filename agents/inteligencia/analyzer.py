@@ -45,6 +45,13 @@ SECTORES QUE NOS INTERESAN:
 - Automotrices y servicios de vehículos
 - Tecnología y startups locales
 
+SEÑALES DE OPORTUNIDAD ESPECIAL:
+- Si ves búsquedas como 'trabaja con nosotros', 'empleos', 'se busca personal'
+  → significa que una empresa está creciendo y necesita digitalización
+- Si ves 'impo_empresas_nuevas' en las señales → son empresas recién constituidas,
+  máxima prioridad como leads potenciales
+- Relacioná siempre las tendencias con oportunidades concretas para PulsarMoon
+
 IGNORAR COMPLETAMENTE:
 - Política, elecciones, partidos
 - Deportes y equipos de fútbol

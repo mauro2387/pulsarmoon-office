@@ -58,37 +58,57 @@ _HEADERS = {"User-Agent": "Mozilla/5.0 (compatible; PulsarMoon/1.0)"}
 
 
 def collect_google_trends() -> list[dict]:
-    """Recolecta trending searches y categorías de Uruguay. Sin LLM."""
+    """Recolecta trending searches de Uruguay. Sin LLM."""
     signals = []
+
+    # 1. Top 100 trending searches generales Uruguay
     try:
         pt = TrendReq(hl="es-419", tz=180)
         trending = pt.trending_searches(pn="uruguay")
-        for _, row in trending.head(50).iterrows():
+        for _, row in trending.head(100).iterrows():
             signals.append({
                 "source": "trends_trending",
                 "title": str(row[0]),
-                "content": "trending search",
+                "content": "trending search uruguay",
             })
     except Exception as e:
         logger.warning("Error trending searches: %s", e)
 
-    # Categorías específicas
-    for cat_id, cat_name in _TREND_CATEGORIES.items():
-        try:
-            pt = TrendReq(hl="es-419", tz=180)
-            pt.build_payload(kw_list=[""], cat=cat_id,
-                             timeframe="now 7-d", geo="UY")
-            related = pt.related_queries()
-            for kw_data in related.values():
-                if kw_data and "top" in kw_data and kw_data["top"] is not None:
-                    for _, row in kw_data["top"].head(10).iterrows():
-                        signals.append({
-                            "source": f"trends_{cat_name}",
-                            "title": str(row.get("query", "")),
-                            "content": str(row.get("value", "")),
-                        })
-        except Exception as e:
-            logger.warning("Error categoría %s: %s", cat_name, e)
+    # 2. Búsquedas relacionadas a nuestros sectores objetivo
+    SECTOR_KEYWORDS = [
+        "restaurante", "clinica", "hotel", "gimnasio",
+        "inmobiliaria", "spa", "odontologia", "farmacia",
+        "arquitecto", "contador", "abogado", "veterinaria"
+    ]
+    try:
+        pt = TrendReq(hl="es-419", tz=180)
+        # pytrends acepta hasta 5 keywords por llamada
+        for i in range(0, len(SECTOR_KEYWORDS), 5):
+            batch = SECTOR_KEYWORDS[i:i+5]
+            try:
+                pt.build_payload(kw_list=batch, timeframe="now 7-d",
+                                 geo="UY")
+                related = pt.related_queries()
+                for kw, kw_data in related.items():
+                    if (kw_data and "top" in kw_data
+                            and kw_data["top"] is not None):
+                        for _, row in kw_data["top"].head(10).iterrows():
+                            query = str(
+                                row.get("query", "")).strip()
+                            if query:
+                                signals.append({
+                                    "source": f"trends_sector_{kw}",
+                                    "title": query,
+                                    "content": str(
+                                        row.get("value", "")),
+                                })
+            except Exception as e:
+                logger.warning("Error sector trends %s: %s",
+                               batch, e)
+            import time
+            time.sleep(2)  # Evitar rate limiting de Google
+    except Exception as e:
+        logger.warning("Error sector keywords trends: %s", e)
 
     logger.info("Google Trends: %d señales", len(signals))
     return signals
@@ -168,37 +188,61 @@ def _scrape_uruguayxxi() -> list[dict]:
     return results
 
 
-def collect_mercadolibre_signals() -> list[dict]:
-    """Extrae señales de MercadoLibre Uruguay. Sin LLM."""
+def collect_impo_signals() -> list[dict]:
+    """Detecta empresas nuevas en el Diario Oficial (IMPO). Sin LLM."""
     signals = []
-    urls = {
-        "ml_ofertas": "https://www.mercadolibre.com.uy/ofertas",
-        "ml_servicios": "https://listado.mercadolibre.com.uy/servicios/",
-        "ml_comercial": "https://listado.mercadolibre.com.uy/inmuebles-comerciales/",
-    }
-    for source, url in urls.items():
-        try:
-            resp = requests.get(url, headers=_HEADERS, timeout=10)
-            resp.raise_for_status()
-            soup = BeautifulSoup(resp.text, "html.parser")
-            titles = []
-            # MercadoLibre usa h2 y spans para títulos de productos
-            for tag in soup.find_all(["h2", "h3"]):
-                text = tag.get_text(strip=True)
-                if len(text) > 5 and text not in titles:
-                    titles.append(text)
-                if len(titles) >= 30:
-                    break
-            for title in titles:
-                signals.append({
-                    "source": "mercadolibre",
-                    "title": title,
-                    "content": source,
-                })
-        except Exception as e:
-            logger.warning("Error MercadoLibre %s: %s", source, e)
+    KEYWORDS = ["S.R.L", "S.A.S", " S.A.", "sociedad",
+                "se constituye", "constitución", "objeto social"]
 
-    logger.info("MercadoLibre: %d señales", len(signals))
+    urls_to_try = [
+        "https://www.impo.com.uy/diariooficial/avisos?json=true",
+        "https://www.impo.com.uy/bases/aviso?json=true",
+    ]
+
+    headers = {"User-Agent": "Mozilla/5.0 (compatible; PulsarMoon/1.0)"}
+
+    for url in urls_to_try:
+        try:
+            resp = requests.get(url, headers=headers, timeout=15)
+            if resp.status_code != 200:
+                continue
+
+            try:
+                data = resp.json()
+                items = (data if isinstance(data, list)
+                         else data.get("avisos", data.get("items", [])))
+                for item in items[:50]:
+                    title = str(item.get(
+                        "titulo", item.get("title", ""))).strip()
+                    content = str(item.get(
+                        "contenido", item.get("content", ""))).strip()
+                    combined = (title + " " + content).upper()
+                    if any(kw.upper() in combined for kw in KEYWORDS):
+                        signals.append({
+                            "source": "impo_empresas_nuevas",
+                            "title": title[:200],
+                            "url": item.get(
+                                "url", "https://www.impo.com.uy"),
+                            "content": content[:300],
+                        })
+                if signals:
+                    break
+            except Exception:
+                soup = BeautifulSoup(resp.text, "html.parser")
+                for tag in soup.find_all(["h2", "h3", "p"])[:50]:
+                    text = tag.get_text(strip=True)
+                    if any(kw.upper() in text.upper()
+                           for kw in KEYWORDS):
+                        signals.append({
+                            "source": "impo_empresas_nuevas",
+                            "title": text[:200],
+                            "url": url,
+                            "content": "",
+                        })
+        except Exception as e:
+            logger.warning("Error IMPO %s: %s", url, e)
+
+    logger.info("IMPO empresas nuevas: %d señales", len(signals))
     return signals
 
 
