@@ -242,6 +242,23 @@ def pm_create_project() -> Any:
     return jsonify({"status": "ok", "project_id": project_id})
 
 
+@app.route("/pm/create-direct", methods=["POST"])
+def pm_create_direct() -> Any:
+    """Crea proyecto desde descripción directa (WhatsApp)."""
+    from agents.pm.pm_agent import _agent as pm
+    data = request.get_json()
+    if not data or not data.get("description") or not data.get("client"):
+        return _error("description y client requeridos")
+    project_id = pm.create_project_from_description(
+        description=data["description"],
+        client=data["client"],
+        plazo=data.get("plazo", "normal"),
+    )
+    if not project_id:
+        return _error("No se pudo crear el proyecto", 500)
+    return jsonify({"status": "ok", "project_id": project_id})
+
+
 @app.route("/pm/approve/<string:project_id>", methods=["POST"])
 def pm_approve(project_id: str) -> Any:
     """Aprueba un proyecto — activa el roadmap."""

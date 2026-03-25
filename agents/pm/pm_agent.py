@@ -212,6 +212,54 @@ class PMAgent(BaseAgent):
         return project_id
 
     # ── Python puro, sin LLM ──
+    def create_project_from_description(
+        self, description: str, client: str, plazo: str = "normal"
+    ) -> str | None:
+        """Crea proyecto desde descripción directa (sin dev_session)."""
+        self.write_event("working", f"Creando proyecto para {client}...")
+        db = get_db()
+
+        plazo_days = {"urgente": 14, "normal": 28, "flexible": 42}
+        deadline = date.today() + timedelta(
+            days=plazo_days.get(plazo, 28))
+
+        year = date.today().year
+        last = db.fetchone(
+            "SELECT id FROM projects WHERE id LIKE %s "
+            "ORDER BY id DESC LIMIT 1",
+            (f"PM-{year}-%",))
+        if last:
+            seq = int(last["id"].split("-")[2]) + 1
+        else:
+            seq = 1
+        project_id = f"PM-{year}-{seq:03d}"
+
+        roadmap = self.generate_roadmap(
+            description, client, deadline.isoformat())
+        if roadmap is None:
+            return None
+
+        title = f"Web — {client}"
+        db.execute(
+            """INSERT INTO projects
+               (id, company_id, client, type, title, description,
+                deadline, phases, logs)
+               VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
+            (project_id, self.company_id, client, "web", title,
+             description[:500], deadline,
+             json.dumps(roadmap, ensure_ascii=False),
+             json.dumps([{
+                 "event": "project_created",
+                 "ts": datetime.now().isoformat(),
+                 "source": "whatsapp_direct",
+             }])),
+        )
+        self.log("project_created", {"project_id": project_id})
+        self.write_event("done", f"Proyecto {project_id} creado")
+        self.notify_mauro(project_id)
+        return project_id
+
+    # ── Python puro, sin LLM ──
     def format_whatsapp_message(self, project_id: str) -> str:
         """Formatea mensaje de WhatsApp con roadmap completo."""
         db = get_db()

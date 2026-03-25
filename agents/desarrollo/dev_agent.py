@@ -221,18 +221,6 @@ class DevAgent(BaseAgent):
                 (vercel_url, token),
             )
             self.write_event("done", f"Proyecto entregado: {vercel_url}")
-
-            # Disparar creación de proyecto en PM
-            if vercel_url:
-                try:
-                    requests.post(
-                        "http://127.0.0.1:8766/pm/create",
-                        json={"dev_session_token": token},
-                        timeout=10,
-                    )
-                except requests.RequestException as e:
-                    logger.warning("Error creando proyecto PM: %s", e)
-
             return {
                 "status": "done",
                 "vercel_url": vercel_url,

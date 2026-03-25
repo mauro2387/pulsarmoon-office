@@ -89,4 +89,33 @@ if (MAURO_NUMBERS.includes(msg.from)) {
             `🗺️ Roadmap: https://api.vydre.me/pm/roadmap/${projectId}`
         );
     }
+
+    // Detectar pedido de roadmap directo
+    // Formato: "pm [cliente]: [descripción]"
+    // Ejemplo: "pm Clínica Sol: web con agenda online y galería"
+    const pmDirectMatch = msg.body.match(/^pm\s+(.+?):\s+(.+)$/i);
+    if (pmDirectMatch) {
+        const pmClient = pmDirectMatch[1].trim();
+        const pmDescription = pmDirectMatch[2].trim();
+        await client.sendMessage(msg.from,
+            `🧠 Generando roadmap para *${pmClient}*...`);
+        try {
+            const response = await fetch('https://api.vydre.me/pm/create-direct', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    description: pmDescription,
+                    client: pmClient,
+                    plazo: 'normal'
+                })
+            });
+            if (!response.ok) {
+                await client.sendMessage(msg.from, '❌ Error generando roadmap.');
+            }
+            // El roadmap llega por WhatsApp automáticamente via notify_mauro()
+        } catch (err) {
+            console.error('[PM] Error creando proyecto directo:', err.message);
+            await client.sendMessage(msg.from, '❌ Error generando roadmap. Server no responde.');
+        }
+    }
 }
