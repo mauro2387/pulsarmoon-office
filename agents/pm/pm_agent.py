@@ -13,7 +13,7 @@ from pathlib import Path
 from urllib.request import Request, urlopen
 from urllib.error import URLError
 
-import google.generativeai as genai
+from google import genai
 from dotenv import load_dotenv
 
 PROJECT_ROOT = str(Path(__file__).resolve().parent.parent.parent)
@@ -47,8 +47,7 @@ class PMAgent(BaseAgent):
             model="gemini",
             company_id="pulsarmoon",
         )
-        genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
-        self._gemini = genai.GenerativeModel("gemini-2.5-pro")
+        self._gemini = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 
     # ── Gemini 2.5 Pro — ÚNICA llamada LLM del agente ──
     def generate_roadmap(self, brief: str, client: str,
@@ -82,11 +81,10 @@ class PMAgent(BaseAgent):
 
         for attempt in range(2):
             try:
-                resp = self._gemini.generate_content(
-                    [{"role": "user", "parts": [
-                        {"text": self.context + "\n\n" + prompt}
-                    ]}],
-                    generation_config={"temperature": 0.2},
+                resp = self._gemini.models.generate_content(
+                    model="gemini-2.5-pro",
+                    contents=self.context + "\n\n" + prompt,
+                    config={"temperature": 0.2},
                 )
                 text = resp.text.strip()
                 # Limpiar backticks si Gemini los agrega
@@ -95,11 +93,11 @@ class PMAgent(BaseAgent):
                     text = text.rsplit("```", 1)[0].strip()
                 roadmap = json.loads(text)
 
-                tokens = getattr(resp, "usage_metadata", None)
+                usage = getattr(resp, "usage_metadata", None)
                 self.log("gemini_call", {
                     "attempt": attempt + 1,
-                    "input_tokens": getattr(tokens, "prompt_token_count", 0),
-                    "output_tokens": getattr(tokens, "candidates_token_count", 0),
+                    "input_tokens": getattr(usage, "prompt_token_count", 0),
+                    "output_tokens": getattr(usage, "candidates_token_count", 0),
                 })
                 self.write_event("done", "Roadmap generado")
                 return roadmap
