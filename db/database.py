@@ -252,6 +252,32 @@ class Database:
             """)
         logger.info("Tablas de inteligencia creadas/verificadas.")
 
+    def setup_pm_tables(self):
+        """Crea tabla de proyectos para el Project Manager."""
+        with self._cursor() as cur:
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS projects (
+                    id VARCHAR(20) PRIMARY KEY,
+                    company_id VARCHAR(50) NOT NULL,
+                    client VARCHAR(200) NOT NULL,
+                    type VARCHAR(20) NOT NULL,
+                    title VARCHAR(200) NOT NULL,
+                    description TEXT,
+                    created_at TIMESTAMP DEFAULT NOW(),
+                    deadline DATE,
+                    status VARCHAR(30) DEFAULT 'pending_approval',
+                    current_phase VARCHAR(30) DEFAULT 'demo',
+                    phases JSONB NOT NULL,
+                    budget_agreed NUMERIC(10,2) DEFAULT 0,
+                    budget_paid NUMERIC(10,2) DEFAULT 0,
+                    link_repo VARCHAR(500),
+                    link_staging VARCHAR(500),
+                    link_production VARCHAR(500),
+                    logs JSONB DEFAULT '[]'
+                )
+            """)
+        logger.info("Tabla projects creada/verificada.")
+
 
 def get_db() -> Database:
     """Retorna instancia singleton de Database."""

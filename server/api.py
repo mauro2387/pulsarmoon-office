@@ -223,6 +223,66 @@ def dev_complete_session() -> Any:
     return jsonify({"status": "ok", "token": token, "vercel_url": vercel_url})
 
 
+# ─── Project Manager ──────────────────────────────────────────────────────────
+
+@app.route("/pm/create", methods=["POST"])
+def pm_create_project() -> Any:
+    """Crea proyecto desde sesión de dev completada."""
+    from agents.pm.pm_agent import _agent as pm
+    data = request.get_json()
+    if not data or not data.get("dev_session_token"):
+        return _error("dev_session_token requerido")
+    project_id = pm.create_project(data["dev_session_token"])
+    if not project_id:
+        return _error("No se pudo crear el proyecto", 500)
+    # Notificar a Mauro en background
+    threading.Thread(
+        target=pm.notify_mauro, args=(project_id,), daemon=True).start()
+    return jsonify({"status": "ok", "project_id": project_id})
+
+
+@app.route("/pm/approve/<string:project_id>", methods=["POST"])
+def pm_approve(project_id: str) -> Any:
+    """Aprueba un proyecto — activa el roadmap."""
+    from agents.pm.pm_agent import _agent as pm
+    if pm.approve(project_id):
+        return jsonify({"status": "ok"})
+    return _error("Proyecto no encontrado", 404)
+
+
+@app.route("/pm/reject/<string:project_id>", methods=["POST"])
+def pm_reject(project_id: str) -> Any:
+    """Rechaza un proyecto — lo cancela."""
+    from agents.pm.pm_agent import _agent as pm
+    if pm.reject(project_id):
+        return jsonify({"status": "ok"})
+    return _error("Proyecto no encontrado", 404)
+
+
+@app.route("/pm/project/<string:project_id>", methods=["GET"])
+def pm_get_project(project_id: str) -> Any:
+    """Retorna proyecto completo desde PostgreSQL."""
+    from db.database import get_db
+    db = get_db()
+    project = db.fetchone("SELECT * FROM projects WHERE id = %s",
+                          (project_id,))
+    if not project:
+        return _error("Proyecto no encontrado", 404)
+    # Serializar campos especiales
+    import json as _json
+    for key in ("phases", "logs"):
+        if isinstance(project.get(key), str):
+            project[key] = _json.loads(project[key])
+    if project.get("deadline"):
+        project["deadline"] = str(project["deadline"])
+    if project.get("created_at"):
+        project["created_at"] = project["created_at"].isoformat()
+    for k in ("budget_agreed", "budget_paid"):
+        if project.get(k) is not None:
+            project[k] = float(project[k])
+    return jsonify(project)
+
+
 # ─── Iniciar servidor ──────────────────────────────────────────────────────────
 
 def run(host: str, port: int) -> None:
