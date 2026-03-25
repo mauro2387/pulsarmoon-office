@@ -42,4 +42,42 @@ if (MAURO_NUMBERS.includes(msg.from)) {
             );
         }
     }
+
+    // Detectar aprobación/rechazo de proyectos PM
+    const pmApproveMatch = msg.body.match(/^APROBAR\s+(PM-\d{4}-\d{3})$/i);
+    const pmRejectMatch = msg.body.match(/^RECHAZAR\s+(PM-\d{4}-\d{3})$/i);
+
+    if (pmApproveMatch) {
+        const projectId = pmApproveMatch[1].toUpperCase();
+        try {
+            const response = await fetch(`https://api.vydre.me/pm/approve/${projectId}`, {
+                method: 'POST'
+            });
+            if (response.ok) {
+                await client.sendMessage(msg.from, `✅ Proyecto ${projectId} aprobado y activado.`);
+            } else {
+                await client.sendMessage(msg.from, `❌ Error aprobando ${projectId}. Verificá el ID.`);
+            }
+        } catch (err) {
+            console.error('[PM] Error aprobando proyecto:', err.message);
+            await client.sendMessage(msg.from, `❌ Error aprobando ${projectId}. Server no responde.`);
+        }
+    }
+
+    if (pmRejectMatch) {
+        const projectId = pmRejectMatch[1].toUpperCase();
+        try {
+            const response = await fetch(`https://api.vydre.me/pm/reject/${projectId}`, {
+                method: 'POST'
+            });
+            if (response.ok) {
+                await client.sendMessage(msg.from, `🚫 Proyecto ${projectId} rechazado.`);
+            } else {
+                await client.sendMessage(msg.from, `❌ Error rechazando ${projectId}.`);
+            }
+        } catch (err) {
+            console.error('[PM] Error rechazando proyecto:', err.message);
+            await client.sendMessage(msg.from, `❌ Error rechazando ${projectId}. Server no responde.`);
+        }
+    }
 }
