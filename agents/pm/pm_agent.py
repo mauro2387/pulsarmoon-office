@@ -82,7 +82,7 @@ class PMAgent(BaseAgent):
         for attempt in range(2):
             try:
                 resp = self._gemini.models.generate_content(
-                    model="gemini-2.5-pro",
+                    model="gemini-2.5-flash",
                     contents=self.context + "\n\n" + prompt,
                     config={"temperature": 0.2},
                 )
