@@ -5,6 +5,7 @@ Multi-empresa, LLM centralizado con cache, WhatsApp, logging a PostgreSQL.
 import json
 import logging
 import os
+import re
 import time
 from pathlib import Path
 
@@ -118,6 +119,8 @@ class BaseAgent:
         extra = (system_extra + "\n\n" if system_extra else "")
         extra += "Responde SOLO con JSON válido, sin texto extra ni backticks."
         text = self.call_llm(user_message, extra, max_tokens, temperature=0)
+        text = re.sub(r'^```(?:json)?\s*', '', text.strip())
+        text = re.sub(r'\s*```$', '', text)
         try:
             return json.loads(text)
         except (json.JSONDecodeError, ValueError) as e:
