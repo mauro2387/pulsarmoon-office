@@ -345,6 +345,17 @@ class PMAgent(BaseAgent):
             urlopen(req, timeout=30)
         except (URLError, OSError):
             pass
+        # Enviar link al roadmap
+        body2 = json.dumps({
+            "number": MAURO_PHONE,
+            "message": f"🗺️ Ver roadmap: https://api.vydre.me/pm/roadmap/{project_id}",
+        }).encode()
+        try:
+            req2 = Request(WA_URL, data=body2, method="POST",
+                           headers={"Content-Type": "application/json"})
+            urlopen(req2, timeout=30)
+        except (URLError, OSError):
+            pass
         return True
 
     # ── Python puro, sin LLM ──
