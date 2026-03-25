@@ -54,37 +54,76 @@ class PMAgent(BaseAgent):
                          deadline: str) -> dict | None:
         """Genera roadmap completo con Gemini. Reintenta 1 vez."""
         self.write_event("working", "Generando roadmap...")
-        prompt = (
-            "Sos el Project Manager de PulsarMoon. "
-            "Generá un roadmap completo y realista para este proyecto.\n\n"
-            f"Cliente: {client}\nDeadline: {deadline}\n"
-            f"Fecha de hoy: {date.today().isoformat()}\n"
-            f"Brief:\n{brief}\n\n"
-            "Retorná SOLO un JSON válido con esta estructura exacta, "
-            "sin markdown, sin explicaciones:\n"
-            '{"phases":[{"name":"demo","status":"pending",'
-            '"week_range":"semana 1","started_at":null,'
-            '"finished_at":null,"tasks":[{"id":"T-001",'
-            '"title":"título","description":"desc",'
-            '"status":"pending","finished_at":null}]},'
-            '{"name":"development",...},'
-            '{"name":"testing",...},'
-            '{"name":"delivery",...}]}\n\n'
-            "Reglas:\n"
-            "- Las 4 fases SIEMPRE: demo, development, testing, delivery\n"
-            "- Calculá week_range basándote en deadline y hoy\n"
-            "- Cada fase: 3-8 tareas realistas\n"
-            "- Development debe ser la más detallada\n"
-            "- IDs correlativos globales: T-001, T-002...\n"
-            "- Solo retorná el JSON, nada más"
+        today = date.today().isoformat()
+        system_prompt = (
+            "Sos el Project Manager técnico senior de PulsarMoon, "
+            "agencia de desarrollo web y sistemas en Punta del Este, "
+            "Uruguay. Tu trabajo es generar roadmaps de proyectos "
+            "extremadamente detallados y profesionales."
+        )
+        user_prompt = (
+            f"Cliente: {client}\n"
+            f"Deadline: {deadline}\n"
+            f"Fecha de hoy: {today}\n"
+            f"Brief del proyecto: {brief}\n\n"
+            "INSTRUCCIONES CRÍTICAS:\n"
+            "- Pensá profundamente en cada aspecto del proyecto antes "
+            "de generar el roadmap\n"
+            "- Cada tarea debe ser MUY específica y técnica — imaginá "
+            "que se lo explicás a un desarrollador senior que va a "
+            "ejecutarla sin preguntar nada\n"
+            "- Para tareas de development, especificá: tecnologías "
+            "exactas, librerías, decisiones de arquitectura, edge "
+            "cases importantes\n"
+            "- Para tareas de demo, especificá: qué pantallas se "
+            "muestran, qué flujos se demuestran, qué decisiones se "
+            "validan con el cliente\n"
+            "- Para testing, especificá: qué se testea exactamente, "
+            "en qué dispositivos, qué escenarios críticos\n"
+            "- Los títulos deben ser concisos (máx 5 palabras)\n"
+            "- Las descripciones deben tener entre 20 y 50 palabras, "
+            "siendo muy específicas\n"
+            "- Pensá en dependencias entre tareas y ordenarlas "
+            "lógicamente\n"
+            "- Considerá el stack de PulsarMoon: Next.js, Tailwind, "
+            "PostgreSQL, Vercel, Node.js, TypeScript\n"
+            "- Mínimo 4 tareas en development, máximo 10\n"
+            "- IDs correlativos globales: T-001, T-002, T-003...\n\n"
+            "Retorná SOLO JSON válido sin markdown ni explicaciones:\n"
+            '{\n'
+            '  "phases": [\n'
+            '    {\n'
+            '      "name": "demo|development|testing|delivery",\n'
+            '      "status": "pending",\n'
+            '      "week_range": "semana X | semanas X-Y",\n'
+            '      "started_at": null,\n'
+            '      "finished_at": null,\n'
+            '      "tasks": [\n'
+            '        {\n'
+            '          "id": "T-001",\n'
+            '          "title": "título corto",\n'
+            '          "description": "descripción técnica específica '
+            'de 20-50 palabras",\n'
+            '          "status": "pending",\n'
+            '          "finished_at": null\n'
+            '        }\n'
+            '      ]\n'
+            '    }\n'
+            '  ]\n'
+            '}'
         )
 
         for attempt in range(2):
             try:
                 resp = self._gemini.models.generate_content(
-                    model="gemini-2.5-flash",
-                    contents=self.context + "\n\n" + prompt,
-                    config={"temperature": 0.2},
+                    model="gemini-2.5-pro",
+                    contents=user_prompt,
+                    config=genai.types.GenerateContentConfig(
+                        system_instruction=system_prompt,
+                        thinking_config=genai.types.ThinkingConfig(
+                            thinking_budget=-1),
+                        temperature=1.0,
+                    ),
                 )
                 text = resp.text.strip()
                 # Limpiar backticks si Gemini los agrega

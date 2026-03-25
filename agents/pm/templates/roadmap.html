@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Roadmap — {{ project.title }}</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: #0f0f1a;
+    color: #e2e8f0;
+    min-height: 100vh;
+  }
+
+  /* Header */
+  .header {
+    background: #1a1a2e;
+    border-bottom: 1px solid #2a2a3e;
+    padding: 24px 32px;
+  }
+  .header-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .header h1 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #fff;
+  }
+  .header-meta {
+    display: flex;
+    gap: 24px;
+    flex-wrap: wrap;
+    margin-top: 12px;
+    font-size: 0.9rem;
+    color: #94a3b8;
+  }
+  .header-meta span { display: flex; align-items: center; gap: 6px; }
+  .badge {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .badge-pending { background: #f59e0b22; color: #f59e0b; border: 1px solid #f59e0b44; }
+  .badge-active { background: #4f8ef722; color: #4f8ef7; border: 1px solid #4f8ef744; }
+  .badge-completed { background: #22c55e22; color: #22c55e; border: 1px solid #22c55e44; }
+  .badge-cancelled { background: #ef444422; color: #ef4444; border: 1px solid #ef444444; }
+
+  /* Progress bar */
+  .progress-container {
+    padding: 16px 32px;
+    background: #12121e;
+  }
+  .progress-info {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.85rem;
+    color: #94a3b8;
+    margin-bottom: 8px;
+  }
+  .progress-bar {
+    height: 8px;
+    background: #1a1a2e;
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #4f8ef7, #22c55e);
+    border-radius: 4px;
+    transition: width 0.4s ease;
+  }
+
+  /* Phases grid */
+  .phases {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 20px;
+    padding: 24px 32px;
+  }
+  .phase-card {
+    background: #1a1a2e;
+    border-radius: 12px;
+    border: 1px solid #2a2a3e;
+    overflow: hidden;
+  }
+  .phase-header {
+    padding: 16px 20px;
+    border-bottom: 1px solid #2a2a3e;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .phase-name {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #fff;
+  }
+  .phase-week {
+    font-size: 0.8rem;
+    color: #64748b;
+    background: #0f0f1a;
+    padding: 3px 10px;
+    border-radius: 8px;
+  }
+  .task-list { padding: 12px 0; }
+  .task {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 10px 20px;
+    transition: background 0.15s;
+    cursor: pointer;
+  }
+  .task:hover { background: #22223a; }
+  .task.done { opacity: 0.6; }
+  .task.done .task-title { text-decoration: line-through; color: #22c55e; }
+  .task.done .task-desc { text-decoration: line-through; }
+
+  .task-check {
+    width: 20px;
+    height: 20px;
+    min-width: 20px;
+    border: 2px solid #4f8ef7;
+    border-radius: 4px;
+    margin-top: 2px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .task-check:hover { background: #4f8ef733; }
+  .task.done .task-check {
+    background: #22c55e;
+    border-color: #22c55e;
+  }
+  .task.done .task-check::after {
+    content: '✓';
+    color: #fff;
+    font-size: 12px;
+    font-weight: 700;
+  }
+
+  .task-content { flex: 1; }
+  .task-id {
+    font-size: 0.7rem;
+    color: #4f8ef7;
+    font-weight: 600;
+    font-family: monospace;
+  }
+  .task-title {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #e2e8f0;
+    margin-top: 2px;
+  }
+  .task-desc {
+    font-size: 0.8rem;
+    color: #64748b;
+    margin-top: 4px;
+    line-height: 1.4;
+  }
+
+  /* Phase emoji colors */
+  .phase-demo .phase-header { border-left: 4px solid #a855f7; }
+  .phase-development .phase-header { border-left: 4px solid #4f8ef7; }
+  .phase-testing .phase-header { border-left: 4px solid #f59e0b; }
+  .phase-delivery .phase-header { border-left: 4px solid #22c55e; }
+
+  @media (max-width: 768px) {
+    .phases { grid-template-columns: 1fr; padding: 16px; }
+    .header { padding: 16px; }
+    .progress-container { padding: 12px 16px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-top">
+    <h1 id="project-title"></h1>
+    <span class="badge" id="status-badge"></span>
+  </div>
+  <div class="header-meta">
+    <span>👤 <span id="meta-client"></span></span>
+    <span>📅 Deadline: <span id="meta-deadline"></span></span>
+    <span>💰 Presupuesto: <span id="meta-budget"></span></span>
+    <span>🆔 <span id="meta-id"></span></span>
+  </div>
+</div>
+
+<div class="progress-container">
+  <div class="progress-info">
+    <span id="progress-text">0% completado</span>
+    <span id="progress-count">0 / 0 tareas</span>
+  </div>
+  <div class="progress-bar">
+    <div class="progress-fill" id="progress-fill" style="width: 0%"></div>
+  </div>
+</div>
+
+<div class="phases" id="phases-container"></div>
+
+<script>
+  const PROJECT_ID = document.location.pathname.split('/').pop();
+  const PHASE_EMOJI = {
+    demo: '🔬', development: '⚙️', testing: '🧪', delivery: '🚀'
+  };
+  const BADGE_CLASS = {
+    pending: 'badge-pending', active: 'badge-active',
+    completed: 'badge-completed', cancelled: 'badge-cancelled'
+  };
+
+  let projectData = null;
+
+  async function loadProject() {
+    const resp = await fetch('/pm/project/' + PROJECT_ID);
+    if (!resp.ok) {
+      document.body.innerHTML = '<div style="padding:40px;text-align:center;color:#ef4444">Proyecto no encontrado</div>';
+      return;
+    }
+    projectData = await resp.json();
+    render();
+  }
+
+  function getAllTasks() {
+    const phases = projectData.phases?.phases || projectData.phases || [];
+    return phases.flatMap(p => p.tasks || []);
+  }
+
+  function calcProgress() {
+    const tasks = getAllTasks();
+    if (!tasks.length) return { pct: 0, done: 0, total: 0 };
+    const done = tasks.filter(t => t.status === 'done').length;
+    return { pct: Math.round((done / tasks.length) * 100), done, total: tasks.length };
+  }
+
+  function render() {
+    const p = projectData;
+    document.title = 'Roadmap — ' + (p.title || p.id);
+    document.getElementById('project-title').textContent = p.title || p.id;
+    document.getElementById('meta-client').textContent = p.client || '—';
+    document.getElementById('meta-deadline').textContent = p.deadline || 'pendiente';
+    document.getElementById('meta-budget').textContent =
+      p.budget_agreed ? '$' + Number(p.budget_agreed).toLocaleString() + ' USD' : 'pendiente';
+    document.getElementById('meta-id').textContent = p.id;
+
+    const badge = document.getElementById('status-badge');
+    badge.textContent = (p.status || 'pending').toUpperCase();
+    badge.className = 'badge ' + (BADGE_CLASS[p.status] || 'badge-pending');
+
+    // Progress
+    const prog = calcProgress();
+    document.getElementById('progress-text').textContent = prog.pct + '% completado';
+    document.getElementById('progress-count').textContent = prog.done + ' / ' + prog.total + ' tareas';
+    document.getElementById('progress-fill').style.width = prog.pct + '%';
+
+    // Phases
+    const phases = p.phases?.phases || p.phases || [];
+    const container = document.getElementById('phases-container');
+    container.innerHTML = '';
+
+    for (const phase of phases) {
+      const emoji = PHASE_EMOJI[phase.name] || '📌';
+      const card = document.createElement('div');
+      card.className = 'phase-card phase-' + phase.name;
+
+      let tasksHtml = '';
+      for (const t of (phase.tasks || [])) {
+        const isDone = t.status === 'done';
+        tasksHtml += `
+          <div class="task ${isDone ? 'done' : ''}" data-task-id="${esc(t.id)}">
+            <div class="task-check" onclick="toggleTask('${esc(t.id)}')"></div>
+            <div class="task-content">
+              <span class="task-id">${esc(t.id)}</span>
+              <div class="task-title">${esc(t.title)}</div>
+              <div class="task-desc">${esc(t.description || '')}</div>
+            </div>
+          </div>`;
+      }
+
+      card.innerHTML = `
+        <div class="phase-header">
+          <span class="phase-name">${emoji} ${esc(phase.name.toUpperCase())}</span>
+          <span class="phase-week">${esc(phase.week_range || '')}</span>
+        </div>
+        <div class="task-list">${tasksHtml}</div>`;
+      container.appendChild(card);
+    }
+  }
+
+  function esc(s) {
+    const d = document.createElement('div');
+    d.textContent = s;
+    return d.innerHTML;
+  }
+
+  async function toggleTask(taskId) {
+    const resp = await fetch('/pm/task/done', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ project_id: PROJECT_ID, task_id: taskId })
+    });
+    if (!resp.ok) return;
+    const result = await resp.json();
+    // Actualizar localmente
+    const phases = projectData.phases?.phases || projectData.phases || [];
+    for (const phase of phases) {
+      for (const t of (phase.tasks || [])) {
+        if (t.id === taskId) {
+          t.status = t.status === 'done' ? 'pending' : 'done';
+          t.finished_at = t.status === 'done' ? new Date().toISOString() : null;
+        }
+      }
+    }
+    render();
+  }
+
+  loadProject();
+</script>
+</body>
+</html>

@@ -5,10 +5,11 @@ Expone endpoints para consultar el estado de los agentes.
 import logging
 import threading
 import time
+from pathlib import Path
 from typing import Any
 
 import requests as req
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, send_file
 from flask_cors import CORS
 
 from server import db
@@ -281,6 +282,80 @@ def pm_get_project(project_id: str) -> Any:
         if project.get(k) is not None:
             project[k] = float(project[k])
     return jsonify(project)
+
+
+@app.route("/pm/roadmap/<string:project_id>", methods=["GET"])
+def pm_roadmap_page(project_id: str) -> Any:
+    """Sirve la página HTML del roadmap."""
+    from db.database import get_db
+    db = get_db()
+    project = db.fetchone("SELECT id FROM projects WHERE id = %s",
+                          (project_id,))
+    if not project:
+        return _error("Proyecto no encontrado", 404)
+    template = Path(__file__).resolve().parent.parent / \
+        "agents" / "pm" / "templates" / "roadmap.html"
+    return send_file(template, mimetype="text/html")
+
+
+@app.route("/pm/task/done", methods=["POST"])
+def pm_task_done() -> Any:
+    """Marca/desmarca tarea como done dentro del JSONB phases."""
+    from db.database import get_db
+    import json as _json
+    from datetime import datetime
+
+    data = request.get_json()
+    if not data or not data.get("project_id") or not data.get("task_id"):
+        return _error("project_id y task_id requeridos")
+
+    project_id = data["project_id"]
+    task_id = data["task_id"]
+    db = get_db()
+    project = db.fetchone("SELECT phases FROM projects WHERE id = %s",
+                          (project_id,))
+    if not project:
+        return _error("Proyecto no encontrado", 404)
+
+    phases = project["phases"]
+    if isinstance(phases, str):
+        phases = _json.loads(phases)
+
+    phase_list = phases.get("phases", phases) if isinstance(
+        phases, dict) else phases
+
+    total = 0
+    done = 0
+    found = False
+    for phase in phase_list:
+        for t in phase.get("tasks", []):
+            total += 1
+            if t["id"] == task_id:
+                found = True
+                if t["status"] == "done":
+                    t["status"] = "pending"
+                    t["finished_at"] = None
+                else:
+                    t["status"] = "done"
+                    t["finished_at"] = datetime.now().isoformat()
+            if t["status"] == "done":
+                done += 1
+
+    if not found:
+        return _error("Tarea no encontrada", 404)
+
+    # Preservar estructura original
+    if isinstance(phases, dict) and "phases" in phases:
+        phases["phases"] = phase_list
+    else:
+        phases = phase_list
+
+    db.execute(
+        "UPDATE projects SET phases = %s WHERE id = %s",
+        (_json.dumps(phases, ensure_ascii=False), project_id))
+
+    progress = round((done / total) * 100) if total else 0
+    return jsonify({"status": "ok", "progress": progress})
 
 
 # ─── Iniciar servidor ──────────────────────────────────────────────────────────
