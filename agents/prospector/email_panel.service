@@ -1,0 +1,15 @@
+[Unit]
+Description=PulsarMoon Email Prospector Panel (port 8771)
+After=network.target
+
+[Service]
+Type=simple
+User=server
+WorkingDirectory=/home/server/pulsarmoon-office
+ExecStart=/home/server/pulsarmoon-office/.venv/bin/python -m agents.prospector.email_panel
+Restart=always
+RestartSec=15
+EnvironmentFile=/home/server/pulsarmoon-office/.env
+
+[Install]
+WantedBy=multi-user.target
